@@ -1,0 +1,14 @@
+cluster_id,name,district,cross_district,main_areas,profile,notes
+C01,Kato Paphos Urban Coast,Paphos,false,Kato Paphos; Paphos Town; harbour; Chloraka south,Urban/coastal,Dense day-1 activity cluster.
+C02,Geroskipou–Kouklia–Aphrodite,Paphos,false,Geroskipou; Timi; Acheleia; Kouklia; Aphrodite Hills; Petra tou Romiou,Culture/coast/resort,Good southeast corridor.
+C03,Pegeia–Coral Bay–Sea Caves,Paphos,false,Pegeia; Coral Bay; Agios Georgios; Sea Caves,Coastal/cliffs,Strong romantic coastal cluster.
+C04,Laona–Akamas Villages,Paphos,false,Kathikas; Arodes; Ineia; Droushia; Akourdaleia; Kritou Terra; Miliou,Semi-mountain/vineyards,Official Laona-Akamas wine route.
+C05,Polis–Latchi–Neo Chorio,Paphos,false,Polis; Latchi; Prodromi; Neo Chorio; Baths of Aphrodite,Coast/Akamas gateway,High-value summer cluster.
+C06,NW Chrysochous Coast,Paphos,false,Argaka; Gialia; Pomos; Agia Marina,Remote coast,Important to avoid city/coast bias.
+C07,Lysos–Steni–Peristerona,Paphos,false,Lysos; Steni; Peristerona; Simou,Foothills/forest edge,Good authentic rural cluster.
+C08,Ezousa–Tsada–Letymbou,Paphos,false,Episkopi; Tsada; Kallepeia; Letymbou; Lemona,Valley/vineyards,Bridges city to highlands.
+C09,Vouni Panagias Highlands,Paphos,false,Panagia; Asprogia; Kannaviou; Polemi; Psathi,Mountain/vineyards,Official Vouni Panagias–Ambelitis route.
+C10,Statos–Agios Fotios Highlands,Paphos,false,Statos–Agios Fotios; Koilineia; Galataria; Pentalia,High mountain/orchards,Pair with Panagia/highlands.
+C11,Diarizos–Salamiou–Pretori,Paphos,false,Salamiou; Pretori; Kelokedara; Arminou; Agios Nikolaos; Mamonia,Mountain valley,Official Diarizos wine route.
+C12,Paphos Forest Interior,Paphos,false,Cedar Valley; Stavros tis Psokas; Tzelefos; forest roads,Remote forest/highlands,Not ideal for arrival-day unless staying rural.
+C13,Pissouri / West Limassol Cross-District Extension,Limassol,true,Pissouri village; Pissouri Square; Pissouri Bay; Cape Aspro; Melanda,Village/coast/cross-district,Administrative district = Limassol. Allowed as Paphos-planner extension mainly from C02 (Kouklia/Aphrodite Hills/Petra tou Romiou). Never label as Paphos.
