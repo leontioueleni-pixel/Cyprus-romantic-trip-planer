@@ -1,0 +1,19 @@
+UPLOAD ONLY THESE 5 FILES TO THE ROOT OF YOUR GITHUB REPOSITORY:
+
+1. main.py
+2. planner.sqlite3
+3. requirements.txt
+4. Dockerfile
+5. render.yaml
+
+Do not put them inside app/, scripts/ or seed/.
+They must appear directly on the first page of the repository.
+
+For the cleanest result, you can leave your old files there, but these 5 must be in the root.
+
+Then in Render:
+- Root Directory: blank
+- Manual Deploy -> Deploy latest commit
+
+The Dockerfile runs:
+uvicorn main:app --host 0.0.0.0 --port $PORT

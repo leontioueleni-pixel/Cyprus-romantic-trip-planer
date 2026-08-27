@@ -1,16 +1,6 @@
 services:
   - type: web
-    name: cyprus-romantic-planner-paphos
+    name: cyprus-romantic-trip-planer
     runtime: docker
     plan: free
     healthCheckPath: /api/v1/health
-    autoDeploy: true
-    envVars:
-      - key: APP_ENV
-        value: production
-      - key: ENABLE_LIVE_PROVIDERS
-        value: "false"
-      - key: CONTENT_VERSION
-        value: content_2026_08_27
-      - key: RULES_VERSION
-        value: rules_1_0
