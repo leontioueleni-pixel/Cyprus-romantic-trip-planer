@@ -1,0 +1,508 @@
+Hotel_ID,Hotel_Name,Hotel_Cluster,Restaurant_ID,Venue,Restaurant_Cluster,Planning_Travel_Band,Meal_Type,Romantic_Score,Data_Status
+PFO-H001,Elysium Hotel,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H001,Elysium Hotel,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H001,Elysium Hotel,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H001,Elysium Hotel,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H001,Elysium Hotel,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H002,Annabelle,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H002,Annabelle,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H002,Annabelle,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H002,Annabelle,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H002,Annabelle,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H002,Annabelle,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H002,Annabelle,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H002,Annabelle,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H002,Annabelle,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H002,Annabelle,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H002,Annabelle,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H002,Annabelle,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H003,Almyra,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H003,Almyra,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H003,Almyra,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H003,Almyra,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H003,Almyra,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H003,Almyra,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H003,Almyra,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H003,Almyra,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H003,Almyra,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H003,Almyra,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H003,Almyra,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H003,Almyra,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H004,"Amavi, MadeForTwo Hotels – Paphos",C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H005,Azia Resort & Spa,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H005,Azia Resort & Spa,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H005,Azia Resort & Spa,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H005,Azia Resort & Spa,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H006,Cap St Georges Hotel & Resort,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H007,Thalassa Boutique Hotel & Spa,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H008,Minthis Resort,C08,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H008,Minthis Resort,C08,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H008,Minthis Resort,C08,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H008,Minthis Resort,C08,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H008,Minthis Resort,C08,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H008,Minthis Resort,C08,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H008,Minthis Resort,C08,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H008,Minthis Resort,C08,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H008,Minthis Resort,C08,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H008,Minthis Resort,C08,PFO-R018,Pithari Tavern,C02,30–45 min,Dinner,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R019,Vouni Panayia Winery Restaurant,C09,15–30 min,Lunch,10,Verified
+PFO-H008,Minthis Resort,C08,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H008,Minthis Resort,C08,PFO-R021,Golf Clubhouse Restaurant,C02,30–45 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H009,Anassa,C05,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H009,Anassa,C05,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H009,Anassa,C05,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H009,Anassa,C05,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H009,Anassa,C05,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H009,Anassa,C05,PFO-R016,Porto Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H009,Anassa,C05,PFO-R017,Faros No. 2 Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H009,Anassa,C05,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R018,Pithari Tavern,C02,0–15 min,Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R021,Golf Clubhouse Restaurant,C02,0–15 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R022,Symposio Pissouri,C13,15–30 min,Lunch / Dinner,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R023,O'Vrakas Taverna Pissouri,C13,15–30 min,Lunch / Dinner,9,Needs Recheck
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R024,Το Καφενείο του Χωρκού / To Kafeneio tou Xorkou,C13,15–30 min,Coffee / Breakfast / Light Local Food,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R025,Panorama Lounge,C13,15–30 min,Coffee / Drinks / Light Meal,9,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R026,Pissouri Bay Cafe,C13,15–30 min,Breakfast / Coffee / Lunch,8,Verified
+PFO-H010,Aphrodite Hills Hotel,C02,PFO-R027,The Bunch of Grapes Inn Restaurant,C13,15–30 min,Dinner / Restaurant,10,Needs Recheck
+PFO-H011,Atlantica Golden Beach,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H011,Atlantica Golden Beach,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H011,Atlantica Golden Beach,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H011,Atlantica Golden Beach,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H011,Atlantica Golden Beach,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H011,Atlantica Golden Beach,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H011,Atlantica Golden Beach,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H012,Constantinou Bros Asimina Suites Hotel,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H013,Constantinou Bros Athena Royal Beach Hotel,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H014,Constantinou Bros Pioneer Beach Hotel,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H015,Alexander The Great Beach Hotel,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H016,Olympic Lagoon Resorts Paphos,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H017,Cali Resort & Spa by Louis Hotels,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H018,Ivi Mare – Designed for Adults by Louis Hotels,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R015,Steni Restaurant,C07,0–15 min,Lunch / Dinner,8,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R016,Porto Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R017,Faros No. 2 Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R019,Vouni Panayia Winery Restaurant,C09,30–45 min,Lunch,10,Verified
+PFO-H019,Demetriou Paradisos Hills Hotel,C07,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R016,Porto Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R017,Faros No. 2 Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H020,Aphrodite Beach Hotel,C05,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R001,Epicurean Restaurant,C01,30–45 min,Dinner,8,Verified
+PFO-H021,Palates Hotel,C04,PFO-R002,Mediterraneo Restaurant,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R003,O'Shin Restaurant,C01,30–45 min,Dinner,8,Verified
+PFO-H021,Palates Hotel,C04,PFO-R004,Amorosa Restaurant,C01,30–45 min,Lunch / Dinner,10,Verified
+PFO-H021,Palates Hotel,C04,PFO-R005,Ouranos,C01,30–45 min,Dinner / Drinks,10,Verified
+PFO-H021,Palates Hotel,C04,PFO-R006,Mediterraneo,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R007,Notios Restaurant,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R008,Ouzeri,C01,30–45 min,Lunch / Dinner,10,Verified
+PFO-H021,Palates Hotel,C04,PFO-R009,Mosaics,C01,30–45 min,Breakfast / Dinner,8,Verified
+PFO-H021,Palates Hotel,C04,PFO-R010,Eauzone,C01,30–45 min,Light Lunch / Drinks,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R011,Petradaki Tavern,C04,0–15 min,Lunch / Dinner,9,Verified
+PFO-H021,Palates Hotel,C04,PFO-R012,Yiannis Tavern,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H021,Palates Hotel,C04,PFO-R013,To Stekki Tou Panai,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H021,Palates Hotel,C04,PFO-R014,Phinikas Tavern,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H021,Palates Hotel,C04,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H021,Palates Hotel,C04,PFO-R016,Porto Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H021,Palates Hotel,C04,PFO-R017,Faros No. 2 Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H021,Palates Hotel,C04,PFO-R019,Vouni Panayia Winery Restaurant,C09,30–45 min,Lunch,10,Verified
+PFO-H021,Palates Hotel,C04,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,0–15 min,Sunday Lunch / Wine,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H022,M Boutique Hotel – Designed for Adults,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H023,King Jason Paphos – Designed for Adults by Louis Hotels,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H024,St George Beach Hotel & Spa Resort,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H025,Vrachia Beach Hotel & Suites – Adults Only,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R001,Epicurean Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R002,Mediterraneo Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R003,O'Shin Restaurant,C01,15–30 min,Dinner,8,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R004,Amorosa Restaurant,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R005,Ouranos,C01,15–30 min,Dinner / Drinks,10,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R006,Mediterraneo,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R007,Notios Restaurant,C01,15–30 min,Lunch / Dinner,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R008,Ouzeri,C01,15–30 min,Lunch / Dinner,10,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R009,Mosaics,C01,15–30 min,Breakfast / Dinner,8,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R010,Eauzone,C01,15–30 min,Light Lunch / Drinks,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R016,Porto Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R017,Faros No. 2 Latchi Restaurant,C05,30–45 min,Lunch / Dinner,9,Draft
+PFO-H026,Coral Beach Hotel & Resort,C03,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H027,Louis Paphos Breeze,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H027,Louis Paphos Breeze,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H027,Louis Paphos Breeze,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H027,Louis Paphos Breeze,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H028,Louis Ledra Beach,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H028,Louis Ledra Beach,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H028,Louis Ledra Beach,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H028,Louis Ledra Beach,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R016,Porto Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R017,Faros No. 2 Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H029,Polis 1907 by Louis Hotels,C05,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R001,Epicurean Restaurant,C01,30–45 min,Dinner,8,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R002,Mediterraneo Restaurant,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R003,O'Shin Restaurant,C01,30–45 min,Dinner,8,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R004,Amorosa Restaurant,C01,30–45 min,Lunch / Dinner,10,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R005,Ouranos,C01,30–45 min,Dinner / Drinks,10,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R006,Mediterraneo,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R007,Notios Restaurant,C01,30–45 min,Lunch / Dinner,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R008,Ouzeri,C01,30–45 min,Lunch / Dinner,10,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R009,Mosaics,C01,30–45 min,Breakfast / Dinner,8,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R010,Eauzone,C01,30–45 min,Light Lunch / Drinks,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R011,Petradaki Tavern,C04,0–15 min,Lunch / Dinner,9,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R012,Yiannis Tavern,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R013,To Stekki Tou Panai,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R014,Phinikas Tavern,C04,0–15 min,Lunch / Dinner,8,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R016,Porto Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R017,Faros No. 2 Latchi Restaurant,C05,15–30 min,Lunch / Dinner,9,Draft
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R019,Vouni Panayia Winery Restaurant,C09,30–45 min,Lunch,10,Verified
+PFO-H030,Droshia Traditional Homes – COCO-MAT Full Experience,C04,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,0–15 min,Sunday Lunch / Wine,9,Verified
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R011,Petradaki Tavern,C04,15–30 min,Lunch / Dinner,9,Verified
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R012,Yiannis Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R013,To Stekki Tou Panai,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R014,Phinikas Tavern,C04,15–30 min,Lunch / Dinner,8,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R015,Steni Restaurant,C07,15–30 min,Lunch / Dinner,8,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R016,Porto Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R017,Faros No. 2 Latchi Restaurant,C05,0–15 min,Lunch / Dinner,9,Draft
+PFO-H031,Tavros Hotel Apartments,C05,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,15–30 min,Sunday Lunch / Wine,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R001,Epicurean Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R002,Mediterraneo Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R003,O'Shin Restaurant,C01,0–15 min,Dinner,8,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R004,Amorosa Restaurant,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R005,Ouranos,C01,0–15 min,Dinner / Drinks,10,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R006,Mediterraneo,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R007,Notios Restaurant,C01,0–15 min,Lunch / Dinner,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R008,Ouzeri,C01,0–15 min,Lunch / Dinner,10,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R009,Mosaics,C01,0–15 min,Breakfast / Dinner,8,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R010,Eauzone,C01,0–15 min,Light Lunch / Drinks,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R011,Petradaki Tavern,C04,30–45 min,Lunch / Dinner,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R012,Yiannis Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R013,To Stekki Tou Panai,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R014,Phinikas Tavern,C04,30–45 min,Lunch / Dinner,8,Draft
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R018,Pithari Tavern,C02,15–30 min,Dinner,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R020,Petradaki Winery Experience / Sunday Lunch,C04,30–45 min,Sunday Lunch / Wine,9,Verified
+PFO-H032,Kentrikon 1924 Boutique Hotel & Suites,C01,PFO-R021,Golf Clubhouse Restaurant,C02,15–30 min,Breakfast / Lunch / Dinner,9,Verified
