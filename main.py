@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 ROOT=Path(__file__).resolve().parent
 DB=ROOT/"planner.sqlite3"
-app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v62")
+app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v91")
 
 def conn():
     c=sqlite3.connect(DB); c.row_factory=sqlite3.Row; return c
@@ -88,8 +88,10 @@ def activity_hotel_compatible(r,hotel,req):
 
 def restaurant_hotel_compatible(r,hotel):
     owner=owner_hotel_id(r)
-    # Hotel-owned restaurants are only valid for guests of that hotel.
+    p=pld(r)
     if owner and owner!=hotel["hotel_id"]:
+        return False
+    if str(p.get("External_Hotel_Owned") or "").lower()=="yes":
         return False
     return True
 
@@ -208,6 +210,9 @@ def category_family(r):
               "archaeology","villages","religious","boat","diving","swimming","beach","sea","local_food"]:
         if k in tg:return k
     return (r["category"] or "other").lower()
+
+def experience_group(r):
+    return str(pld(r).get("Experience_Group_ID") or "").strip() or None
 
 def pld(r):
     try:return json.loads(r["payload"] or "{}")
@@ -498,6 +503,63 @@ def is_swim_experience(r):
 def is_indoor(r):
     return "indoor" in str(pld(r).get("Indoor_Outdoor_Both") or "").lower()
 
+def activity_intensity(r):
+    """Return 1=light, 2=moderate, 3=high physical/mental load."""
+    t=txt(r)
+    tg=tags(r)
+    dur=int(r["duration_min"] or 60)
+
+    # Short village / heritage / scenic walks are gentle, even when their tags
+    # include "hiking" because of the word "walk".
+    if dur<=75 and any(x in t for x in ["village","heritage walk","stone lanes","waterfront stroll","traditional centre"]):
+        return 2
+
+    # High-load experiences.
+    if any(k in tg for k in ["cycling","hiking","diving","golf","horse"]):
+        return 3
+    if any(x in t for x in [
+        "kayak","canoe","paddleboard","parasailing","deep-sea fishing",
+        "tuna fishing","long route","adventure","archery"
+    ]):
+        return 3
+
+    # Moderate-load experiences.
+    if any(k in tg for k in ["boat","swimming","beach","sea","crafts","cooking"]):
+        return 2
+    if any(x in t for x in ["nature trail","walk","workshop","pottery lesson","cruise"]):
+        return 2
+    if dur>=120:
+        return 2
+
+    # Museums, viewpoints, cafés, heritage stops, spa etc. are treated as light by default.
+    return 1
+
+def day_load_units(r):
+    dur=int(r["duration_min"] or 60)
+    intensity=activity_intensity(r)
+    duration_units=1 if dur<=60 else (2 if dur<=105 else 3)
+    return intensity + duration_units
+
+def secondary_load_allowed(primary_row, secondary_row, pace):
+    p_i=activity_intensity(primary_row)
+    s_i=activity_intensity(secondary_row)
+    total=day_load_units(primary_row)+day_load_units(secondary_row)
+
+    # Never stack two high-intensity experiences.
+    if p_i>=3 and s_i>=3:
+        return False
+
+    # A high-intensity primary should only be followed by a light secondary.
+    if p_i>=3 and s_i>1:
+        return False
+
+    # Pace-specific daily ceilings.
+    limit={"relaxed":6,"balanced":8,"active":10}.get(pace,8)
+    if total>limit:
+        return False
+
+    return True
+
 def weather_priority(r,req,d):
     mode=req.weather_mode
     t=txt(r); bonus=0
@@ -518,11 +580,11 @@ def weather_priority(r,req,d):
         if d.month in [5,6,7,8,9,10] and is_swim_experience(r): bonus += 20
     return bonus
 
-def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_swim=False,route_cache=None,family_counts=None,last_cluster=None):
+def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_swim=False,route_cache=None,family_counts=None,last_cluster=None,used_groups=None):
     if req.weather_mode=="heatwave":
         desired="17:00" if day==1 else "09:30"
     elif req.weather_mode=="rainy":
-        desired="16:00" if day==1 else "10:30"
+        desired="15:30" if day==1 else "10:30"
     else:
         desired="16:30" if day==1 else "10:30"
     cs=candidates(c,req,hotel,d,desired,used,route_cache,allow_backshift=(day!=1))
@@ -531,6 +593,8 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
     uncovered=yes-covered_yes
     rescored=[]
     for base,r,op in cs:
+        if used_groups and experience_group(r) and experience_group(r) in used_groups:
+            continue
         sc=base+weather_priority(r,req,d)+style_bonus(r,req)
         if tags(r)&uncovered: sc+=55
         fam=category_family(r)
@@ -546,9 +610,61 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
     if preferred_now:
         rescored=preferred_now
     if day==1:
-        local_day1=[x for x in rescored if x[1]["cluster_id"]==hotel["cluster_id"]]
-        if local_day1:
-            rescored=local_day1
+        # HARD Day-1 guardrail. Safety/realism outrank user preference matching.
+        # Rebuild from the original valid candidate set so active preferences cannot
+        # force golf/cycling/hiking/diving after an 11:00 arrival.
+        safe=[]
+        for base,r,op in cs:
+            if used_groups and experience_group(r) and experience_group(r) in used_groups:
+                continue
+            if r["travel_band"]!="0–15 min":
+                continue
+            if activity_intensity(r)>=3:
+                continue
+
+            owner=owner_hotel_id(r)
+            own_wellness=(owner==hotel["hotel_id"] and "wellness" in tags(r))
+
+            # Normal safe Day-1 cap is 90 min. A verified spa/wellness experience
+            # inside the selected hotel may be up to 120 min as a rainy-day fallback.
+            max_dur=120 if own_wellness else 90
+            if int(r["duration_min"] or 60)>max_dur:
+                continue
+
+            # Heatwave outdoor experiences are intentionally late; 17:00–18:30 is valid.
+            latest_end="19:00" if req.weather_mode=="heatwave" else "18:30"
+            if op["end"]>latest_end:
+                continue
+
+            sc=base+weather_priority(r,req,d)+style_bonus(r,req)
+            if tags(r)&uncovered:
+                sc+=25
+            if own_wellness and req.weather_mode=="rainy":
+                sc+=90
+            if family_counts:
+                sc-=family_counts.get(category_family(r),0)*35
+            safe.append((sc,r,op))
+
+        if not safe:
+            return None
+
+        safe.sort(key=lambda x:x[0],reverse=True)
+
+        if req.weather_mode=="heatwave":
+            sea_safe=[x for x in safe if is_swim_experience(x[1]) or
+                      any(k in tags(x[1]) for k in ["sea","beach","swimming"])]
+            if sea_safe:
+                safe=sea_safe
+
+        # Prefer an explicitly recommended safe local option. If none exists,
+        # prefer same-cluster; own-hotel wellness remains a legitimate rainy fallback.
+        local_recommended=[x for x in safe
+            if str(x[1]["recommended_day1"] or "").lower()=="yes"]
+        if local_recommended:
+            rescored=local_recommended
+        else:
+            same_cluster=[x for x in safe if x[1]["cluster_id"]==hotel["cluster_id"]]
+            rescored=same_cluster if same_cluster else safe
     if force_swim:
         swim=[x for x in rescored if is_swim_experience(x[1])]
         if swim:return swim[0]
@@ -560,7 +676,12 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
 def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,family_counts=None,not_before=None):
     # Full days should normally contain a second nearby experience when it genuinely fits.
     base_desired="16:45" if req.weather_mode=="heatwave" else ("15:00" if req.weather_mode=="rainy" else "15:30")
-    earliest=addm(primary["op"]["end"],45)
+    recovery_gap=45
+    if activity_intensity(primary["row"])>=3:
+        recovery_gap=75 if req.pace=="balanced" else (105 if req.pace=="relaxed" else 60)
+    elif int(primary["row"]["duration_min"] or 60)>=120:
+        recovery_gap=60
+    earliest=addm(primary["op"]["end"],recovery_gap)
     desired=max(base_desired,earliest,not_before or "00:00")
     if desired>="18:15":return None
     cs=candidates(c,req,hotel,d,desired,used,route_cache)
@@ -569,6 +690,10 @@ def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     rescored=[]
     for base,r,op in cs:
+        pg=experience_group(primary["row"])
+        rg=experience_group(r)
+        if pg and rg and pg==rg:
+            continue
         # Without live routing, require same geographic cluster for the second activity.
         if not live_enabled and r["cluster_id"]!=primary["row"]["cluster_id"]:
             continue
@@ -581,7 +706,16 @@ def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,
         dur=int(r["duration_min"] or 60)
         if req.pace=="relaxed" and dur>75:continue
         if req.pace=="balanced" and dur>120:continue
+
+        # Daily-load guardrail: duration alone is not enough. Avoid combinations such as
+        # long cycling + kayak, hiking + diving, or golf + horse riding in the same day.
+        if not secondary_load_allowed(primary["row"],r,req.pace):
+            continue
+
         sc=base+weather_priority(r,req,d)+style_bonus(r,req)
+        # Prefer a light recovery-style secondary after a demanding primary.
+        if activity_intensity(primary["row"])>=3 and activity_intensity(r)==1:
+            sc+=35
         if tags(r)&uncovered:sc+=45
         if r["cluster_id"]==primary["row"]["cluster_id"]:sc+=55
         if family_counts:sc-=family_counts.get(category_family(r),0)*30
@@ -610,6 +744,12 @@ def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,
 
 def restaurant_open_at(r,d,hhmm):
     p=pld(r); days=str(p.get("Opening_Days") or "").lower(); hrs=str(p.get("Opening_Hours") or "").lower()
+    seasonal_lunch=str(p.get("Seasonal_Lunch_Months") or "").lower()
+    if seasonal_lunch:
+        if "november–april" in seasonal_lunch or "november-april" in seasonal_lunch:
+            if d.month not in [11,12,1,2,3,4]:return False
+        elif "may–october" in seasonal_lunch or "may-october" in seasonal_lunch:
+            if d.month not in [5,6,7,8,9,10]:return False
     if not days or "confirm" in days or "check weekly" in days or "schedule applies" in days:return False
     if "summer only" in days and d.month not in [5,6,7,8,9,10]:return False
     if "may–october" in days or "may-october" in days:
@@ -624,7 +764,13 @@ def restaurant_open_at(r,d,hhmm):
     spans=re.findall(r'(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})',hrs)
     for h1,m1,h2,m2 in spans:
         a=int(h1)*60+int(m1); b=int(h2)*60+int(m2)
-        if a<=target<=b:return True
+        # If closing time is midnight/after midnight (e.g. 10:00–00:00),
+        # treat the interval as crossing midnight rather than as an empty range.
+        if b < a:
+            if target >= a or target <= b:
+                return True
+        elif a<=target<=b:
+            return True
     return False
 
 
@@ -648,6 +794,102 @@ def venue_public_meta(r):
     return {"rating_5":p.get("Current_Rating_5"),"review_count":p.get("Current_Review_Count"),
             "venue_type":p.get("Venue_Type"),"price_range":p.get("Price_Range")}
 
+def coffee_profile_bonus(r):
+    p=pld(r)
+    profile=str(p.get("Coffee_Profile") or "").lower()
+    blob=(" ".join([
+        str(p.get("Venue_Type") or ""),
+        str(p.get("Notes") or ""),
+        str(r["meal_type"] or ""),
+        str(r["name"] or "")
+    ])).lower()
+    bonus=0
+    # Dedicated sweet/café experiences should beat generic restaurants that merely serve coffee.
+    if profile in ["dedicated_dessert","garden_cake"]: bonus+=42
+    elif profile in ["traditional_kafeneio","heritage_cafe","authentic_local"]: bonus+=30
+    elif profile in ["sunset_view","view_cafe","cafe_bar_cake"]: bonus+=22
+    if any(k in blob for k in ["gelato","patisserie","homemade cake","cakes","dessert","waffle","crepe"]): bonus+=18
+    if any(k in blob for k in ["traditional coffee","kafeneio","local product","village café","village cafe"]): bonus+=14
+    if any(k in blob for k in ["sunset","sea-view","panoramic","garden"]): bonus+=10
+    # Demote generic full restaurants/bars when the request is specifically a coffee/dessert stop.
+    if not profile and "restaurant" in blob and not any(k in blob for k in ["café","cafe","dessert","gelato","patisserie"]):
+        bonus-=18
+    if not profile and "bar" in blob and "coffee" not in blob:
+        bonus-=12
+    return bonus
+
+def coffee_flow_bonus(r,activity_tags=None,lunch_row=None):
+    activity_tags=set(activity_tags or [])
+    p=pld(r)
+    blob=(" ".join([
+        str(p.get("Venue_Type") or ""),
+        str(p.get("Coffee_Profile") or ""),
+        str(p.get("Notes") or ""),
+        str(r["meal_type"] or ""),
+        str(r["name"] or "")
+    ])).lower()
+    bonus=0
+
+    # After wine tasting, avoid turning the whole afternoon into another wine/alcohol stop.
+    if "winery" in activity_tags:
+        if any(k in blob for k in ["wine bar","winery","wine /","wine tasting","charcuterie"]):
+            bonus-=70
+        if any(k in blob for k in ["coffee","café","cafe","dessert","gelato","patisserie","garden"]):
+            bonus+=18
+
+    # Sea / beach / swimming days flow better into a refreshing, scenic or sunset stop.
+    if activity_tags & {"sea","swimming","beach","boat","diving"}:
+        if any(k in blob for k in ["sunset","sea-view","beachfront","gelato","ice cream","terrace","view"]):
+            bonus+=28
+        if any(k in blob for k in ["heavy grill","steak","meze"]):
+            bonus-=18
+
+    # Crafts, villages and local-product days pair naturally with authentic/heritage cafés.
+    if activity_tags & {"crafts","villages","local_food"}:
+        if any(k in blob for k in ["traditional","kafeneio","heritage","village","local","homemade"]):
+            bonus+=28
+
+    # Culture/archaeology days: favour calm café/garden/view stops over another heavy food venue.
+    if activity_tags & {"museums","archaeology","religious"}:
+        if any(k in blob for k in ["garden","café","cafe","coffee","view","patisserie"]):
+            bonus+=16
+
+    # After a substantial lunch, prefer a lighter coffee/drink stop rather than another
+    # full restaurant or dessert-heavy meal surrogate.
+    if lunch_row is not None:
+        lp=pld(lunch_row)
+        lblob=(" ".join([
+            str(lp.get("Venue_Type") or ""),
+            str(lp.get("Notes") or ""),
+            str(lunch_row["meal_type"] or ""),
+            str(lunch_row["name"] or "")
+        ])).lower()
+        heavy_lunch=any(k in lblob for k in [
+            "tavern","taverna","meze","steak","grill","buffet","main restaurant",
+            "traditional cypriot food","lunch / dinner"
+        ])
+        if heavy_lunch:
+            if any(k in blob for k in ["light meal","coffee","café","cafe","tea","sunset","view","bar"]):
+                bonus+=18
+            if any(k in blob for k in ["waffle","crepe","pancake","full restaurant","tavern","taverna"]):
+                bonus-=24
+
+    return bonus
+
+def venue_group(r):
+    return str(pld(r).get("Venue_Group_ID") or "").strip() or None
+
+def lunch_eligible(r,target_time="13:15"):
+    meal=(r["meal_type"] or "").lower()
+    if "lunch" in meal:
+        return True
+    p=pld(r)
+    if str(p.get("Lunch_Eligible") or "").lower()=="yes":
+        # This flag is only used where a published brunch/all-day service explicitly
+        # covers the planned lunch time.
+        return True
+    return False
+
 
 def hotel_restaurant_repeat_exception(r,hotel):
     """Allow dinner repetition only for the selected hotel's own restaurant
@@ -663,14 +905,13 @@ def hotel_restaurant_repeat_exception(r,hotel):
 
 
 def owner_hotel_open_at(r,hotel,d,hhmm):
-    if owner_hotel_id(r)!=hotel["hotel_id"]:
-        return restaurant_open_at(r,d,hhmm)
-    p=pld(r); hrs=str(p.get("Opening_Hours") or "")
-    target=int(hhmm[:2])*60+int(hhmm[3:])
-    spans=re.findall(r'(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})',hrs)
-    for h1,m1,h2,m2 in spans:
-        a=int(h1)*60+int(m1); b=int(h2)*60+int(m2)
-        if a<=target<=b:return True
+    # Hotel ownership gives scoring priority, never permission to bypass
+    # day/season/rotation availability.
+    p=pld(r)
+    days=str(p.get("Opening_Days") or "").lower()
+    if any(x in days for x in ["rotation", "exact selected date must be confirmed",
+                                "confirm exact date", "schedule must be confirmed"]):
+        return False
     return restaurant_open_at(r,d,hhmm)
 
 def owner_hotel_open_for_dinner(r,hotel,d):
@@ -678,17 +919,47 @@ def owner_hotel_open_for_dinner(r,hotel,d):
         return restaurant_open_for_dinner(r,d)
     return owner_hotel_open_at(r,hotel,d,"20:00")
 
-def lunch_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None,target_time='13:15'):
+def lunch_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None,target_time='13:15',used_venue_groups=None,prefer_own=False):
     route_cache=route_cache if route_cache is not None else {}
     avoid_ids=set(avoid_ids or [])
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     rows=c.execute("""select r.*,m.travel_band from restaurant r join hotel_restaurant_mapping m
       on m.restaurant_id=r.restaurant_id where m.hotel_id=? and r.data_status='Verified'""",(req.hotel_id,)).fetchall()
+
+    # Arrival-day lunch: if the selected hotel has a verified lunch venue open at
+    # the exact requested time, keep lunch at the hotel. External lunch is used only
+    # when no suitable own-hotel lunch venue exists.
+    if prefer_own:
+        own=[]
+        for r in rows:
+            if owner_hotel_id(r)!=hotel["hotel_id"]:continue
+            if not restaurant_hotel_compatible(r,hotel):continue
+            if not lunch_eligible(r,target_time):continue
+            if r["restaurant_id"] in avoid_ids:continue
+            if not owner_hotel_open_at(r,hotel,d,target_time):continue
+            if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
+            rt=None
+            if live_enabled:
+                rt=live_route(hotel_location(hotel),row_location(r),route_cache)
+                if not rt or rt["minutes"]>req.max_drive_min:continue
+            sc=(float(r["romantic_score"] or 0)*2.5+
+                float(r["authentic_score"] or 0)*(1.8 if req.couple_style in ["authentic","food_wine"] else .6)+
+                public_rating_bonus(r)+140)
+            own.append((sc,r,rt))
+        if own:
+            own.sort(key=lambda x:x[0],reverse=True)
+            _,r,rt=own[0]
+            used.add(r["restaurant_id"])
+            return {"row":r,"live_route":rt,"lunch_policy":"DAY1_OWN_HOTEL_PRIORITY"}
+
     valid=[]
     for r in rows:
         if not restaurant_hotel_compatible(r,hotel):continue
         if r["restaurant_id"] in avoid_ids or r["restaurant_id"] in used:continue
-        if "lunch" not in (r["meal_type"] or "").lower():continue
+        vg=venue_group(r)
+        if used_venue_groups and vg and vg in used_venue_groups and owner_hotel_id(r)!=hotel["hotel_id"]:
+            continue
+        if not lunch_eligible(r,target_time):continue
         if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
         if not owner_hotel_open_at(r,hotel,d,target_time):continue
         if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
@@ -701,10 +972,16 @@ def lunch_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_
         if preferred_cluster and r["cluster_id"]==preferred_cluster:sc+=28
         valid.append((sc,r,rt))
     if not valid:
-        # Allow a repeat from another day if it is genuinely open; never invent a lunch venue.
+        # Lunch diversity: do not repeat an external restaurant from another day.
+        # If no unused lunch venue exists, allow only the selected hotel's own restaurant
+        # as a fallback. Otherwise leave lunch unfilled rather than recycling the same
+        # external tavern/cafe throughout the trip.
         for r in rows:
-            if r["restaurant_id"] in avoid_ids:continue
-            if "lunch" not in (r["meal_type"] or "").lower():continue
+            rid=r["restaurant_id"]
+            if rid in avoid_ids:continue
+            if rid not in used:continue
+            if owner_hotel_id(r)!=hotel["hotel_id"]:continue
+            if not lunch_eligible(r,target_time):continue
             if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
             if not owner_hotel_open_at(r,hotel,d,target_time):continue
             if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
@@ -712,15 +989,16 @@ def lunch_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_
             if live_enabled:
                 rt=live_route(hotel_location(hotel),row_location(r),route_cache)
                 if not rt or rt["minutes"]>req.max_drive_min:continue
-            sc=float(r["romantic_score"] or 0)*2.5+float(r["authentic_score"] or 0)+public_rating_bonus(r)
+            sc=(float(r["romantic_score"] or 0)*2.5+
+                float(r["authentic_score"] or 0)+public_rating_bonus(r)-70)
             if preferred_cluster and r["cluster_id"]==preferred_cluster:sc+=28
             valid.append((sc,r,rt))
     if not valid:return None
     valid.sort(key=lambda x:x[0],reverse=True)
     _,r,rt=valid[0]; used.add(r["restaurant_id"])
-    return {"row":r,"live_route":rt}
+    return {"row":r,"live_route":rt,"lunch_policy":"EXTERNAL_OR_GENERAL_BEST"}
 
-def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None):
+def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None,used_venue_groups=None,activity_tags=None,lunch_row=None):
     route_cache=route_cache if route_cache is not None else {}
     avoid_ids=set(avoid_ids or [])
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
@@ -729,6 +1007,9 @@ def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid
     valid=[]
     for r in rows:
         if not restaurant_hotel_compatible(r,hotel):continue
+        vg=venue_group(r)
+        if used_venue_groups and vg and vg in used_venue_groups and owner_hotel_id(r)!=hotel["hotel_id"]:
+            continue
         meal=(r["meal_type"] or "").lower()
         if not any(k in meal for k in ["coffee","drinks","light"]):continue
         if r["restaurant_id"] in avoid_ids or r["restaurant_id"] in used:continue
@@ -739,8 +1020,13 @@ def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid
         if live_enabled:
             rt=live_route(hotel_location(hotel),row_location(r),route_cache)
             if not rt or rt["minutes"]>req.max_drive_min:continue
-        sc=float(r["romantic_score"] or 0)*3+float(r["authentic_score"] or 0)*1.5+public_rating_bonus(r)
-        if owner_hotel_id(r)==hotel["hotel_id"]:sc+=35
+        sc=(float(r["romantic_score"] or 0)*3+
+            float(r["authentic_score"] or 0)*1.5+
+            public_rating_bonus(r)+coffee_profile_bonus(r)+
+            coffee_flow_bonus(r,activity_tags=activity_tags,lunch_row=lunch_row))
+        # On-site convenience matters, but should not automatically beat a genuinely
+        # distinctive local dessert/café experience.
+        if owner_hotel_id(r)==hotel["hotel_id"]:sc+=18
         vp=str(pld(r).get("Venue_Type") or "").lower()+" "+(r["meal_type"] or "").lower()
         if any(k in vp for k in ["view","sunset","sea-view"]):sc+=18
         if preferred_cluster and r["cluster_id"]==preferred_cluster:sc+=25
@@ -768,10 +1054,15 @@ def restaurant_open_for_dinner(r,d):
     if not spans:return False
     for h1,m1,h2,m2 in spans:
         start=int(h1)*60+int(m1); end=int(h2)*60+int(m2)
-        if start<=20*60<=end:return True
+        target=20*60
+        if end < start:
+            if target >= start or target <= end:
+                return True
+        elif start<=target<=end:
+            return True
     return False
 
-def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None,last_dinner_id=None):
+def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None,last_dinner_id=None,used_venue_groups=None,prefer_own=False):
     route_cache=route_cache if route_cache is not None else {}
     avoid_ids=set(avoid_ids or [])
     dinner_counts=dinner_counts if dinner_counts is not None else {}
@@ -782,6 +1073,9 @@ def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None
     def eligible(r):
         if not restaurant_hotel_compatible(r,hotel):return False
         if r["restaurant_id"] in avoid_ids:return False
+        vg=venue_group(r)
+        if used_venue_groups and vg and vg in used_venue_groups and owner_hotel_id(r)!=hotel["hotel_id"]:
+            return False
         if "dinner" not in (r["meal_type"] or "").lower():return False
         if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":return False
         if not owner_hotel_open_for_dinner(r,hotel,d):return False
@@ -806,6 +1100,26 @@ def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None
             sc-=45
         return sc
 
+    # Day 1: when a verified own-hotel dinner venue is open, keep dinner at the hotel.
+    if prefer_own:
+        own_valid=[]
+        for r in rows:
+            if owner_hotel_id(r)!=hotel["hotel_id"]:continue
+            if not restaurant_hotel_compatible(r,hotel):continue
+            if "dinner" not in (r["meal_type"] or "").lower():continue
+            if not owner_hotel_open_for_dinner(r,hotel,d):continue
+            if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
+            rt,ok=route_if_ok(r)
+            if not ok:continue
+            count=dinner_counts.get(r["restaurant_id"],0)
+            own_valid.append((dinner_score(r,count)+120,r,rt,"DAY1_OWN_HOTEL_PRIORITY"))
+        if own_valid:
+            own_valid.sort(key=lambda x:x[0],reverse=True)
+            _,r,rt,policy=own_valid[0]
+            used.add(r["restaurant_id"])
+            return {"row":r,"live_route":rt,"repeat_policy":policy,
+                    "dinner_use_count":dinner_counts.get(r["restaurant_id"],0)+1}
+
     # First pass: never repeat a dinner venue while an unused valid venue exists.
     valid=[]
     for r in rows:
@@ -815,8 +1129,28 @@ def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None
         if not ok:continue
         valid.append((dinner_score(r,0),r,rt,"NEW"))
 
-    # Second pass: repetition is permitted ONLY for a highly reviewed restaurant
-    # owned by the selected hotel. External restaurant repetition remains forbidden.
+    # Second pass: if the selected hotel's own restaurant was used for lunch/coffee
+    # earlier TODAY, allow it for dinner only when there is no other valid dinner.
+    # This is not a repeated dinner across days, so it does not require the high-rating
+    # repeat exception. External same-day venue reuse remains forbidden.
+    if not valid:
+        for r in rows:
+            rid=r["restaurant_id"]
+            if rid not in avoid_ids:continue
+            if owner_hotel_id(r)!=hotel["hotel_id"]:continue
+            if dinner_counts.get(rid,0)>0:continue
+            # Re-run eligibility without the same-day avoid-id check.
+            if not restaurant_hotel_compatible(r,hotel):continue
+            if "dinner" not in (r["meal_type"] or "").lower():continue
+            if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
+            if not owner_hotel_open_for_dinner(r,hotel,d):continue
+            if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
+            rt,ok=route_if_ok(r)
+            if not ok:continue
+            valid.append((dinner_score(r,0)-80,r,rt,"HOTEL_SAME_DAY_MEAL_REUSE"))
+
+    # Third pass: repeated DINNER across days is permitted ONLY for a highly reviewed
+    # restaurant owned by the selected hotel. External restaurant repetition remains forbidden.
     if not valid:
         for r in rows:
             if not eligible(r):continue
@@ -860,13 +1194,20 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
     if day==1:
         if lunch:
             rr=lunch["row"]; rt=lunch.get("live_route")
-            lt=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
+            if owner_hotel_id(rr)==hotel["hotel_id"]:
+                lt=0
+            else:
+                lt=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
+            primary_depart=addm(a["start_time"],-a["travel_minutes"])
+            rest_end=max("15:15",primary_depart)
             out += [{"time":f"{addm('13:00',-lt)}–13:00","kind":"travel","title":f"Hotel → {rr['name']} (~{lt} min {'live' if rt else 'planning'})"},
                     {"time":"13:00–14:15","kind":"meal","title":f"Lunch – {rr['name']}"},
-                    {"time":"14:15–16:00","kind":"rest","title":"Return / rest / pool / room"}]
+                    {"time":f"14:15–{rest_end}","kind":"rest","title":"Return / rest / pool / room"}]
         else:
+            primary_depart=addm(a["start_time"],-a["travel_minutes"])
+            rest_end=max("15:15",primary_depart)
             out += [{"time":"13:00","kind":"warning","title":"No verified named lunch venue available in the current database for this date/time."},
-                    {"time":"13:00–16:00","kind":"rest","title":"Hotel time / rest"}]
+                    {"time":f"13:00–{rest_end}","kind":"rest","title":"Hotel time / rest"}]
 
     at=a["travel_minutes"]; depart=addm(a["start_time"],-at)
     src="live" if a["travel_source"]=="GOOGLE_ROUTES" else "planning"
@@ -907,7 +1248,10 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
 
     if coffee and cursor<="17:30":
         rr=coffee["row"]; rt=live_route(current_loc,row_location(rr),route_cache) if live_enabled else coffee.get("live_route")
-        ct=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
+        if owner_hotel_id(rr)==hotel["hotel_id"] and current_loc==hotel_location(hotel):
+            ct=0
+        else:
+            ct=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
         cstart=max("16:30",addm(cursor,ct)); cend=addm(cstart,45)
         if cend<="18:45":
             out += [{"time":f"{addm(cstart,-ct)}–{cstart}","kind":"travel","title":f"Travel to {rr['name']} (~{ct} min {'live' if rt else 'planning'})"},
@@ -917,22 +1261,28 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
     if din:
         rr=din["row"]; restaurant_loc=row_location(rr)
         seg=live_route(current_loc,restaurant_loc,route_cache) if live_enabled else None
-        dt=seg["minutes"] if seg else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
+        if owner_hotel_id(rr)==hotel["hotel_id"] and current_loc==hotel_location(hotel):
+            dt=0
+        else:
+            dt=seg["minutes"] if seg else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
         dep=addm("20:00",-dt)
         if dep>cursor:
             out.append({"time":f"{cursor}–{dep}","kind":"buffer","title":"Return / freshen up / pre-dinner rest"})
         out += [{"time":f"{dep}–20:00","kind":"travel","title":f"Current stop → {rr['name']} (~{dt} min {'live' if seg else 'planning'})"},
                 {"time":"20:00–21:30","kind":"meal","title":f"Dinner – {rr['name']}"}]
-        ret=live_route(restaurant_loc,hotel_location(hotel),route_cache) if live_enabled else None
-        retmin=ret["minutes"] if ret else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
-        out.append({"time":"after dinner","kind":"travel","title":f"{rr['name']} → {hotel['name']} (~{retmin} min {'live' if ret else 'planning'})"})
+        if owner_hotel_id(rr)==hotel["hotel_id"]:
+            out.append({"time":"after dinner","kind":"hotel","title":"Dinner concludes at the hotel"})
+        else:
+            ret=live_route(restaurant_loc,hotel_location(hotel),route_cache) if live_enabled else None
+            retmin=ret["minutes"] if ret else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
+            out.append({"time":"after dinner","kind":"travel","title":f"{rr['name']} → {hotel['name']} (~{retmin} min {'live' if ret else 'planning'})"})
     else:
         out.append({"time":"20:00","kind":"warning","title":"No unused verified dinner venue is available under the current rules. External restaurant repetition is not allowed; a hotel restaurant may repeat only with stored rating ≥4.6/5 and ≥150 reviews."})
     return out
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v62-dinner-diversity",
+    return {"service":"ok","logic_version":"v91-dinner-diversity",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -943,6 +1293,110 @@ def hotels():
     with conn() as c:return [dict(r) for r in c.execute("select hotel_id,name,area,cluster_id from hotel order by name")]
 
 @app.post("/api/v1/trips/generate")
+def rainy_day1_hotel_fallback(c,req,hotel,d,route_cache=None):
+    """Build a realistic arrival day when no safe verified rainy activity exists.
+    This is intentionally NOT presented as an external activity."""
+    route_cache=route_cache if route_cache is not None else {}
+    lunch_used=set(); coffee_used=set(); dinner_used=set()
+    same_day=set()
+
+    lun=lunch_stop(c,req,hotel,d,lunch_used,route_cache=route_cache,
+                   preferred_cluster=hotel["cluster_id"],target_time="13:00",
+                   used_venue_groups=set(),prefer_own=True)
+    if lun:
+        lun["planned_time"]="13:00"
+        same_day.add(lun["row"]["restaurant_id"])
+
+    # Only allow an on-site hotel café/bar in this fallback. If the selected hotel has
+    # no verified on-site coffee venue, leave the slot as hotel/room time.
+    coff=coffee_stop(c,req,hotel,d,coffee_used,route_cache=route_cache,
+                     preferred_cluster=hotel["cluster_id"],avoid_ids=same_day,
+                     used_venue_groups=set(),activity_tags={"museums"})
+    if coff and owner_hotel_id(coff["row"])!=hotel["hotel_id"]:
+        coff=None
+    if coff:
+        same_day.add(coff["row"]["restaurant_id"])
+
+    din=dinner(c,req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day,
+               dinner_counts={},last_dinner_id=None,used_venue_groups=set(),prefer_own=True)
+
+    out=[
+        {"time":"11:00–11:30","kind":"hotel","title":"Arrival, check-in & settle in"},
+        {"time":"11:30–12:45","kind":"rest","title":"Room / hotel time"}
+    ]
+    if lun:
+        rr=lun["row"]
+        if owner_hotel_id(rr)==hotel["hotel_id"]:
+            out.append({"time":"13:00–14:15","kind":"meal","title":f"Lunch – {rr['name']}"})
+        else:
+            lt=BAND_PLAN.get(rr["travel_band"],10)
+            out += [
+                {"time":f"{addm('13:00',-lt)}–13:00","kind":"travel",
+                 "title":f"Hotel → {rr['name']} (~{lt} min planning)"},
+                {"time":"13:00–14:15","kind":"meal","title":f"Lunch – {rr['name']}"},
+                {"time":"14:15–14:30","kind":"travel","title":"Return to hotel"}
+            ]
+    else:
+        out.append({"time":"13:00","kind":"warning",
+                    "title":"No verified named lunch venue available for this exact date/time."})
+
+    out.append({"time":"14:30–17:15","kind":"rest",
+                "title":"Rainy-day hotel time: room, covered common areas & unhurried rest"})
+
+    if coff:
+        out.append({"time":"17:15–18:00","kind":"coffee",
+                    "title":f"{coff['row']['name']} – coffee / drink"})
+    else:
+        out.append({"time":"17:15–18:00","kind":"hotel",
+                    "title":"Quiet hotel time / freshen up"})
+
+    out.append({"time":"18:00–19:30","kind":"rest",
+                "title":"Pre-dinner rest & freshen up"})
+
+    if din:
+        rr=din["row"]
+        if owner_hotel_id(rr)==hotel["hotel_id"]:
+            out += [
+                {"time":"20:00–21:30","kind":"meal","title":f"Dinner – {rr['name']}"},
+                {"time":"after dinner","kind":"hotel","title":"Dinner concludes at the hotel"}
+            ]
+        else:
+            dt=din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10)
+            out += [
+                {"time":f"{addm('20:00',-dt)}–20:00","kind":"travel",
+                 "title":f"Hotel → {rr['name']} (~{dt} min planning)"},
+                {"time":"20:00–21:30","kind":"meal","title":f"Dinner – {rr['name']}"},
+                {"time":"after dinner","kind":"travel",
+                 "title":f"{rr['name']} → {hotel['name']} (~{dt} min planning)"}
+            ]
+    else:
+        out.append({"time":"20:00","kind":"warning",
+                    "title":"No unused verified dinner venue is available under the current rules."})
+
+    return {
+        "day":1,
+        "date":str(d),
+        "title":"Rainy arrival & slow hotel day",
+        "season":trip_season(d),
+        "weather_mode_used":"rainy",
+        "sunset_local":sunset_local(hotel["cluster_id"],d),
+        "weather":{"source":"SEASONAL_PLANNING_NOT_LIVE_FORECAST","mode":"rainy","confidence":"seasonal"},
+        "activity":None,
+        "secondary_activity":None,
+        "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"]),
+                 "lunch_policy":lun.get("lunch_policy")} if lun else None,
+        "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
+        "dinner":{"entity_id":din["row"]["restaurant_id"],"title":din["row"]["name"],**venue_public_meta(din["row"])} if din else None,
+        "timeline":out,
+        "operational_warning":"No safe verified rainy Day-1 activity with published hours was available within the local rule. The planner therefore uses an honest hotel-based arrival fallback instead of inventing an activity.",
+        "timeline_qa":{
+            "external_activity_count":0,
+            "day1_guardrail_applied":True,
+            "day1_fallback":"HOTEL_BASED_RAINY_FALLBACK",
+            "status":"PASS_RAINY_HOTEL_FALLBACK"
+        }
+    }
+
 def generate(req:TripRequest):
     with conn() as c:
         hotel=c.execute("select * from hotel where hotel_id=?",(req.hotel_id,)).fetchone()
@@ -953,7 +1407,7 @@ def generate(req:TripRequest):
         if hotel_op["status"]=="CLOSED":
             raise HTTPException(422,detail={"message":"Selected hotel is not operating for the requested dates.","hotel_operation":hotel_op})
 
-        used=set(); lunch_used=set(); coffee_used=set(); dinner_used=set(); dinner_counts={}; last_dinner_id=None; days=[]; route_cache={}
+        used=set(); used_experience_groups=set(); used_venue_groups=set(); lunch_used=set(); coffee_used=set(); dinner_used=set(); dinner_counts={}; last_dinner_id=None; days=[]; route_cache={}
         family_counts={}; last_cluster=None
         yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
         covered=set()
@@ -981,15 +1435,21 @@ def generate(req:TripRequest):
 
             p=pick_primary(c,day_req,hotel,d,i,used,covered_yes=covered,force_swim=force_swim,
                            avoid_swim=avoid_swim,route_cache=route_cache,
-                           family_counts=family_counts,last_cluster=last_cluster)
+                           family_counts=family_counts,last_cluster=last_cluster,
+                           used_groups=used_experience_groups)
             if not p:
-                days.append({"day":i,"date":str(d),"title":"No valid itinerary day",
-                    "weather_mode_used":day_mode,
-                    "operational_warning":"No Verified activity was confirmed open at a usable time for this exact date under the selected filters.",
-                    "timeline":[]})
+                if i==1 and day_mode=="rainy":
+                    days.append(rainy_day1_hotel_fallback(c,day_req,hotel,d,route_cache=route_cache))
+                else:
+                    days.append({"day":i,"date":str(d),"title":"No valid itinerary day",
+                        "weather_mode_used":day_mode,
+                        "operational_warning":"No Verified activity was confirmed open at a usable time for this exact date under the selected filters.",
+                        "timeline":[]})
                 continue
 
             _,r,op=p; used.add(r["activity_id"]); covered |= tags(r)&yes
+            if experience_group(r):
+                used_experience_groups.add(experience_group(r))
             fam=category_family(r); family_counts[fam]=family_counts.get(fam,0)+1
             last_cluster=r["cluster_id"]
             if is_swim_experience(r):
@@ -1008,8 +1468,12 @@ def generate(req:TripRequest):
                 lunch_time=addm(op["end"],30)
                 if lunch_time>"15:30":lunch_time="15:30"
             lun=lunch_stop(c,day_req,hotel,d,lunch_used,route_cache=route_cache,
-                           preferred_cluster=r["cluster_id"],target_time=lunch_time)
-            if lun:lun["planned_time"]=lunch_time
+                           preferred_cluster=r["cluster_id"],target_time=lunch_time,
+                           used_venue_groups=used_venue_groups,prefer_own=(i==1))
+            if lun:
+                lun["planned_time"]=lunch_time
+                if venue_group(lun["row"]):
+                    used_venue_groups.add(venue_group(lun["row"]))
 
             sec=None
             if i>1:
@@ -1019,6 +1483,8 @@ def generate(req:TripRequest):
                                  not_before=secondary_not_before)
                 if q:
                     _,rr,oo=q; used.add(rr["activity_id"]); covered |= tags(rr)&yes
+                    if experience_group(rr):
+                        used_experience_groups.add(experience_group(rr))
                     sfam=category_family(rr); family_counts[sfam]=family_counts.get(sfam,0)+1
                     sec=obj(rr,oo,day_req)
                     if oo.get("segment_live_route"):sec["segment_live_route"]=oo["segment_live_route"]
@@ -1026,12 +1492,29 @@ def generate(req:TripRequest):
 
             same_day={lun["row"]["restaurant_id"]} if lun else set()
             preferred_cluster=(sec["cluster_id"] if sec else r["cluster_id"])
+            day_activity_tags=set(tags(r))
+            if sec:
+                # Resolve the secondary row from its entity id so its tags can influence
+                # the coffee/drink choice as well.
+                sec_row=c.execute("select * from activity where activity_id=?",(sec["entity_id"],)).fetchone()
+                if sec_row:
+                    day_activity_tags |= tags(sec_row)
             coff=coffee_stop(c,day_req,hotel,d,coffee_used,route_cache=route_cache,
-                             preferred_cluster=preferred_cluster,avoid_ids=same_day)
-            if coff:same_day.add(coff["row"]["restaurant_id"])
+                             preferred_cluster=preferred_cluster,avoid_ids=same_day,
+                             used_venue_groups=used_venue_groups,
+                             activity_tags=day_activity_tags,
+                             lunch_row=(lun["row"] if lun else None))
+            if coff:
+                same_day.add(coff["row"]["restaurant_id"])
+                if venue_group(coff["row"]):
+                    used_venue_groups.add(venue_group(coff["row"]))
             din=dinner(c,day_req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day,
-                       dinner_counts=dinner_counts,last_dinner_id=last_dinner_id)
-            if din:last_dinner_id=din["row"]["restaurant_id"]
+                       dinner_counts=dinner_counts,last_dinner_id=last_dinner_id,
+                       used_venue_groups=used_venue_groups,prefer_own=(i==1))
+            if din:
+                last_dinner_id=din["row"]["restaurant_id"]
+                if venue_group(din["row"]):
+                    used_venue_groups.add(venue_group(din["row"]))
 
             if lun and "local_food" in yes and float(lun["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
             if din and "local_food" in yes and float(din["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
@@ -1051,7 +1534,8 @@ def generate(req:TripRequest):
               "sunset_local":sunset,
               "weather":{"source":"OPEN_METEO_LIVE_FORECAST",**weather_info} if weather_info else {"source":"SEASONAL_PLANNING_NOT_LIVE_FORECAST","mode":day_mode,"confidence":"seasonal"},
               "activity":pa,"secondary_activity":sec,
-              "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"])} if lun else None,
+              "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"]),
+                        "lunch_policy":lun.get("lunch_policy")} if lun else None,
               "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
               "dinner":{"entity_id":din["row"]["restaurant_id"],"title":din["row"]["name"],**venue_public_meta(din["row"]),"travel_band":din["row"]["travel_band"],
                         "travel_minutes":din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(din["row"]["travel_band"],60),
@@ -1060,8 +1544,26 @@ def generate(req:TripRequest):
               "timeline":tl,
               "timeline_qa":{"external_activity_count":1+(1 if sec else 0),
                  "activity_family":fam,"primary_cluster":r["cluster_id"],
+                 "day1_guardrail_applied":(i==1),
+                 "day1_local_band_ok":(r["travel_band"]=="0–15 min") if i==1 else None,
+                 "day1_intensity_ok":(activity_intensity(r)<=2) if i==1 else None,
+                 "day1_duration_ok":(
+                     int(r["duration_min"] or 60)<=(
+                         120 if (owner_hotel_id(r)==hotel["hotel_id"] and "wellness" in tags(r)) else 90
+                     )
+                 ) if i==1 else None,
+                 "primary_intensity":activity_intensity(r),
+                 "primary_load_units":day_load_units(r),
+                 "secondary_intensity":(
+                     activity_intensity(c.execute("select * from activity where activity_id=?",(sec["entity_id"],)).fetchone())
+                     if sec else None),
                  "secondary_pairing":"SAME_CLUSTER_OR_LIVE_NEARBY" if sec else "NO_VALID_NEARBY_SECONDARY",
-                 "status":"PASS"}})
+                 "status":("PASS" if (i!=1 or (
+                     r["travel_band"]=="0–15 min" and activity_intensity(r)<=2 and
+                     int(r["duration_min"] or 60)<=(
+                         120 if (owner_hotel_id(r)==hotel["hotel_id"] and "wellness" in tags(r)) else 90
+                     )
+                 )) else "FAIL_DAY1_GUARDRAIL")}})
 
         unmet=sorted(yes-covered)
         if require_swim and not swim_covered and "swimming / sea bathing" not in unmet:unmet.append("swimming / sea bathing")
@@ -1093,7 +1595,7 @@ def generate(req:TripRequest):
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v62 Hotel-Aware + Dinner Diversity</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v91 Hotel-Aware + Dinner Diversity</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
