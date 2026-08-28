@@ -38,6 +38,7 @@ PREF_RULES={
 class TripRequest(BaseModel):
     hotel_id:str
     start_date:date
+    arrival_time:str=Field("11:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     nights:int=Field(3,ge=1,le=7)
     pace:str="relaxed"
     weather_mode:str="auto"
@@ -97,6 +98,18 @@ def restaurant_hotel_compatible(r,hotel):
 
 def hotel_location(hotel):
     return f"{hotel['name']}, {hotel['area'] or ''}, Cyprus"
+
+def hotel_photo_experience(hotel,weather_mode):
+    p=pld(hotel)
+    spot=str(p.get("Photo_Spot_Rainy") if weather_mode=="rainy" else p.get("Photo_Spot_Normal") or "").strip()
+    if not spot:
+        return ("Romantic photography in covered / indoor hotel areas"
+                if weather_mode=="rainy"
+                else "Romantic photography in the hotel grounds / selected scenic areas")
+    return f"Romantic photography – {spot}"
+
+def hotel_photo_timing(hotel):
+    return str(pld(hotel).get("Photo_Timing_Preference") or "flexible").strip()
 
 def row_location(r):
     p=pld(r)
@@ -227,6 +240,22 @@ def tags(r):
 def addm(hhmm,m):
     h,mi=map(int,hhmm.split(":")); x=h*60+mi+m
     return f"{x//60:02d}:{x%60:02d}"
+
+def minute_of_day(hhmm):
+    h,mi=map(int,hhmm.split(":")); return h*60+mi
+
+def shift_hhmm(hhmm,delta_min):
+    return addm(hhmm,delta_min)
+
+def arrival_shift(req):
+    # Manual programmes use 11:00 as the baseline; Day 1 moves proportionally
+    # when the couple arrives earlier/later, while venue opening hours still win.
+    return minute_of_day(req.arrival_time)-minute_of_day("11:00")
+
+def day1_lunch_time(req):
+    # Normally two hours after arrival; keep a sensible lunch window.
+    raw=addm(req.arrival_time,120)
+    return max("12:00",min(raw,"14:30"))
 
 MONTHS={"jan":1,"january":1,"feb":2,"february":2,"mar":3,"march":3,"apr":4,"april":4,
 "may":5,"jun":6,"june":6,"jul":7,"july":7,"aug":8,"august":8,"sep":9,"sept":9,"september":9,
@@ -582,11 +611,27 @@ def weather_priority(r,req,d):
 
 def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_swim=False,route_cache=None,family_counts=None,last_cluster=None,used_groups=None):
     if req.weather_mode=="heatwave":
-        desired="17:00" if day==1 else "09:30"
+        desired=shift_hhmm("17:00",arrival_shift(req)) if day==1 else "09:30"
     elif req.weather_mode=="rainy":
-        desired="15:30" if day==1 else "10:30"
+        desired=shift_hhmm("15:30",arrival_shift(req)) if day==1 else "10:30"
     else:
-        desired="16:30" if day==1 else "10:30"
+        desired=shift_hhmm("16:30",arrival_shift(req)) if day==1 else "10:30"
+    if day==1:
+        # Do not let a late arrival push the main experience into an implausibly late slot.
+        desired=min(desired,"18:00")
+
+        # For hotels whose curated Day-1 photography is sunset-led, sunset becomes
+        # a real scheduling anchor. In autumn/winter especially, move the main activity
+        # earlier so the couple can return to the hotel before the early sunset.
+        if hotel_photo_timing(hotel)=="sunset_preferred" and req.weather_mode!="rainy":
+            ss=sunset_local(hotel["cluster_id"],d)
+            # Aim for primary start roughly 105 min before sunset:
+            # ~60 min experience + local return + breathing room before a 35 min photo block.
+            sunset_primary_target=addm(ss,-105)
+            desired=min(desired,sunset_primary_target)
+            # Arrival-day activities should still not start unrealistically early.
+            earliest_after_lunch=addm(day1_lunch_time(req),105)
+            desired=max(desired,earliest_after_lunch)
     cs=candidates(c,req,hotel,d,desired,used,route_cache,allow_backshift=(day!=1))
     yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
     covered_yes=covered_yes or set()
@@ -633,6 +678,36 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
 
             # Heatwave outdoor experiences are intentionally late; 17:00–18:30 is valid.
             latest_end="19:00" if req.weather_mode=="heatwave" else "18:30"
+
+            # Duration-aware seasonal sunset anchor. Re-fit EACH candidate according
+            # to its own duration and return-to-hotel requirement. This is essential
+            # in winter, where a 90-min spa must begin earlier than a 45-min museum.
+            if hotel_photo_timing(hotel)=="sunset_preferred" and req.weather_mode!="rainy":
+                ss=sunset_local(hotel["cluster_id"],d)
+                photo_start=addm(ss,-35)
+                rt=op.get("live_route")
+                return_min=(rt["minutes"] if rt else
+                            (0 if owner_hotel_id(r)==hotel["hotel_id"] else BAND_PLAN.get(r["travel_band"],10)))
+                # keep 10 min breathing room before the photo
+                activity_latest_end=addm(photo_start,-(return_min+10))
+                dur=int(r["duration_min"] or 60)
+                target_start=addm(activity_latest_end,-dur)
+                lunch_end=addm(day1_lunch_time(req),75)
+                earliest_start=addm(lunch_end,15)
+                refit_desired=max(earliest_start,target_start)
+
+                sunset_op=fit(r,d,req.weather_mode,refit_desired,allow_backshift=True)
+                if sunset_op and minute_of_day(sunset_op["end"])<=minute_of_day(activity_latest_end):
+                    # Preserve live route already resolved by candidates().
+                    if rt:
+                        sunset_op["live_route"]=rt
+                    op=sunset_op
+                else:
+                    # If it cannot finish before sunset, keep it only when sunset is
+                    # late enough for the existing activity to finish and return first.
+                    if minute_of_day(op["end"])+return_min+10 > minute_of_day(photo_start):
+                        continue
+
             if op["end"]>latest_end:
                 continue
 
@@ -1181,33 +1256,55 @@ def obj(r,op,req):
       "booking_required":op["booking"],"opening_check":"OPEN","opening_confidence":op["opening_confidence"],
       "data_status":r["data_status"]}
 
-def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
+def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
     route_cache=route_cache if route_cache is not None else {}
     out=[]; live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     if day==1:
-        out += [{"time":"11:00–11:30","kind":"hotel","title":"Arrival, check-in & settle in"},
-                {"time":"11:30–12:45","kind":"rest","title":"Room / hotel time"}]
+        arr=req.arrival_time
+        settle=addm(arr,30)
+        pre_lunch_end=addm(day1_lunch_time(req),-15)
+        out += [{"time":f"{arr}–{settle}","kind":"hotel","title":"Arrival, check-in & settle in"},
+                {"time":f"{settle}–{pre_lunch_end}","kind":"rest","title":"Room / hotel time"}]
     else:
         out.append({"time":"08:30–09:30","kind":"hotel","title":"Breakfast & unhurried start"})
 
     # Day 1 lunch comes before the late-afternoon primary. Full-day lunch follows the morning primary.
     if day==1:
+        lunch_start=(lunch.get("planned_time") if lunch else None) or day1_lunch_time(req)
+        lunch_end=addm(lunch_start,75)
+        primary_depart=addm(a["start_time"],-a["travel_minutes"])
         if lunch:
             rr=lunch["row"]; rt=lunch.get("live_route")
             if owner_hotel_id(rr)==hotel["hotel_id"]:
                 lt=0
             else:
                 lt=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
-            primary_depart=addm(a["start_time"],-a["travel_minutes"])
-            rest_end=max("15:15",primary_depart)
-            out += [{"time":f"{addm('13:00',-lt)}–13:00","kind":"travel","title":f"Hotel → {rr['name']} (~{lt} min {'live' if rt else 'planning'})"},
-                    {"time":"13:00–14:15","kind":"meal","title":f"Lunch – {rr['name']}"},
-                    {"time":f"14:15–{rest_end}","kind":"rest","title":"Return / rest / pool / room"}]
+            if lt>0:
+                out.append({"time":f"{addm(lunch_start,-lt)}–{lunch_start}","kind":"travel",
+                            "title":f"Hotel → {rr['name']} (~{lt} min {'live' if rt else 'planning'})"})
+            out.append({"time":f"{lunch_start}–{lunch_end}","kind":"meal","title":f"Lunch – {rr['name']}"})
         else:
-            primary_depart=addm(a["start_time"],-a["travel_minutes"])
-            rest_end=max("15:15",primary_depart)
-            out += [{"time":"13:00","kind":"warning","title":"No verified named lunch venue available in the current database for this date/time."},
-                    {"time":f"13:00–{rest_end}","kind":"rest","title":"Hotel time / rest"}]
+            out.append({"time":lunch_start,"kind":"warning","title":"No verified named lunch venue available in the current database for this date/time."})
+
+        # Hotel micro-experience inspired by the manually curated Day-1 programmes:
+        # a short photography block that does not count as an external activity.
+        available=max(0, minute_of_day(primary_depart)-minute_of_day(lunch_end))
+        sunset_mode=(hotel_photo_timing(hotel)=="sunset_preferred" and weather_mode!="rainy")
+        photo_min=0 if sunset_mode else (35 if available>=95 else (25 if available>=65 else 0))
+        if photo_min:
+            rest_end=addm(primary_depart,-photo_min)
+            if rest_end>lunch_end:
+                rest_title="Return / room rest / pool or shaded hotel time"
+                if weather_mode=="heatwave":
+                    rest_title="Room / shaded hotel rest during the hotter hours"
+                out.append({"time":f"{lunch_end}–{rest_end}","kind":"rest","title":rest_title})
+            photo_title=hotel_photo_experience(hotel,weather_mode)
+            out.append({"time":f"{rest_end}–{primary_depart}","kind":"hotel_experience","title":photo_title,
+                        "timing_preference":hotel_photo_timing(hotel),
+                        "schedule_mode":"PRE_ACTIVITY_FALLBACK"})
+        elif primary_depart>lunch_end:
+            out.append({"time":f"{lunch_end}–{primary_depart}","kind":"rest",
+                        "title":"Return / rest / pool / room"})
 
     at=a["travel_minutes"]; depart=addm(a["start_time"],-at)
     src="live" if a["travel_source"]=="GOOGLE_ROUTES" else "planning"
@@ -1246,13 +1343,87 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
                 {"time":f"{b['start_time']}–{b['end_time']}","kind":"activity","title":b["title"]}]
         cursor=b["end_time"]; current_loc=b["location_text"]
 
+    # Day-1 seasonal sunset anchor.
+    # It is evaluated before coffee so an early winter sunset is never sacrificed
+    # to a generic coffee slot. In summer, coffee can still happen first when there
+    # is sufficient time before the later sunset.
+    sunset_photo_done=False
+    if day==1 and hotel_photo_timing(hotel)=="sunset_preferred" and weather_mode!="rainy":
+        sunset=sunset_local(hotel["cluster_id"],req.start_date)
+        photo_end=sunset
+        photo_start=addm(photo_end,-35)
+
+        # Estimate return to the selected hotel.
+        if current_loc!=hotel_location(hotel):
+            back=live_route(current_loc,hotel_location(hotel),route_cache) if live_enabled else None
+            back_min=back["minutes"] if back else 10
+        else:
+            back=None; back_min=0
+
+        # If sunset is still far away (typical summer), allow a 45-min coffee first
+        # only when coffee + its travel can finish at least 15 min before the return
+        # journey needed for photography.
+        coffee_before_sunset=False
+        if coffee and cursor<="17:30":
+            rr0=coffee["row"]
+            crt=live_route(current_loc,row_location(rr0),route_cache) if live_enabled else coffee.get("live_route")
+            ctravel=(0 if owner_hotel_id(rr0)==hotel["hotel_id"] and current_loc==hotel_location(hotel)
+                     else (crt["minutes"] if crt else BAND_PLAN.get(rr0["travel_band"],10)))
+            tentative_start=max("16:30",addm(cursor,ctravel))
+            tentative_end=addm(tentative_start,45)
+            # conservative return from café to hotel
+            if row_location(rr0)==hotel_location(hotel) or owner_hotel_id(rr0)==hotel["hotel_id"]:
+                cafe_back=0
+            else:
+                rback=live_route(row_location(rr0),hotel_location(hotel),route_cache) if live_enabled else None
+                cafe_back=rback["minutes"] if rback else 10
+            if minute_of_day(tentative_end)+cafe_back+15 <= minute_of_day(photo_start):
+                if ctravel>0:
+                    out.append({"time":f"{addm(tentative_start,-ctravel)}–{tentative_start}","kind":"travel",
+                                "title":f"Travel to {rr0['name']} (~{ctravel} min {'live' if crt else 'planning'})"})
+                out.append({"time":f"{tentative_start}–{tentative_end}","kind":"coffee",
+                            "title":f"{rr0['name']} – coffee / drink"})
+                cursor=tentative_end
+                current_loc=row_location(rr0)
+                coffee_before_sunset=True
+
+                if current_loc!=hotel_location(hotel):
+                    rb=live_route(current_loc,hotel_location(hotel),route_cache) if live_enabled else None
+                    back_min=rb["minutes"] if rb else 10
+                    back=rb
+                else:
+                    back_min=0; back=None
+
+        depart_back=addm(photo_start,-back_min)
+        if depart_back>=cursor:
+            if depart_back>cursor:
+                out.append({"time":f"{cursor}–{depart_back}","kind":"rest",
+                            "title":"Free time / recovery before sunset"})
+            if back_min>0:
+                out.append({"time":f"{depart_back}–{photo_start}","kind":"travel",
+                            "title":f"Return to {hotel['name']} for sunset photography (~{back_min} min {'live' if back else 'planning'})"})
+            out.append({"time":f"{photo_start}–{photo_end}","kind":"hotel_experience",
+                        "title":hotel_photo_experience(hotel,weather_mode),
+                        "timing_preference":"sunset_preferred",
+                        "schedule_mode":"SEASONAL_SUNSET_ANCHOR",
+                        "sunset_local":sunset})
+            cursor=photo_end
+            current_loc=hotel_location(hotel)
+            sunset_photo_done=True
+
+        # If coffee was already consumed before sunset, prevent a duplicate coffee below.
+        if coffee_before_sunset:
+            coffee=None
+
     if coffee and cursor<="17:30":
         rr=coffee["row"]; rt=live_route(current_loc,row_location(rr),route_cache) if live_enabled else coffee.get("live_route")
         if owner_hotel_id(rr)==hotel["hotel_id"] and current_loc==hotel_location(hotel):
             ct=0
         else:
             ct=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
-        cstart=max("16:30",addm(cursor,ct)); cend=addm(cstart,45)
+        # After an early seasonal sunset, coffee may sensibly follow the photo.
+        base_coffee="15:45" if (day==1 and sunset_photo_done and minute_of_day(sunset_local(hotel["cluster_id"],req.start_date))<18*60) else "16:30"
+        cstart=max(base_coffee,addm(cursor,ct)); cend=addm(cstart,45)
         if cend<="18:45":
             out += [{"time":f"{addm(cstart,-ct)}–{cstart}","kind":"travel","title":f"Travel to {rr['name']} (~{ct} min {'live' if rt else 'planning'})"},
                     {"time":f"{cstart}–{cend}","kind":"coffee","title":f"{rr['name']} – coffee / drink"}]
@@ -1266,8 +1437,33 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
         else:
             dt=seg["minutes"] if seg else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
         dep=addm("20:00",-dt)
+
+        # If a sunset-preferred photo was impossible earlier, use a short pre-dinner
+        # hotel fallback only when the couple is already at the selected hotel.
+        has_photo=any(x.get("kind")=="hotel_experience" for x in out)
+        if (day==1 and hotel_photo_timing(hotel)=="sunset_preferred" and
+            weather_mode!="rainy" and not has_photo and current_loc==hotel_location(hotel) and
+            minute_of_day(dep)-minute_of_day(cursor)>=30):
+            pstart=max(cursor,addm(dep,-30))
+            if pstart<dep:
+                out.append({"time":f"{pstart}–{dep}","kind":"hotel_experience",
+                            "title":hotel_photo_experience(hotel,weather_mode),
+                            "timing_preference":"sunset_preferred",
+                            "schedule_mode":"PRE_DINNER_FALLBACK",
+                            "sunset_local":sunset_local(hotel["cluster_id"],req.start_date)})
+                cursor=dep
+
         if dep>cursor:
-            out.append({"time":f"{cursor}–{dep}","kind":"buffer","title":"Return / freshen up / pre-dinner rest"})
+            active_tags=set(a.get("tags") or []) | set((b or {}).get("tags") or [])
+            if any(k in active_tags for k in ["sea","swimming","beach","boat","diving"]):
+                recovery_title="Return / shower / change / recovery after the sea experience"
+            elif "wellness" in active_tags:
+                recovery_title="Post-spa shower, room rest & change before dinner"
+            elif any(k in active_tags for k in ["cycling","hiking","golf","horse"]):
+                recovery_title="Recovery, shower & unhurried rest before dinner"
+            else:
+                recovery_title="Return / freshen up / pre-dinner rest"
+            out.append({"time":f"{cursor}–{dep}","kind":"rest","title":recovery_title})
         out += [{"time":f"{dep}–20:00","kind":"travel","title":f"Current stop → {rr['name']} (~{dt} min {'live' if seg else 'planning'})"},
                 {"time":"20:00–21:30","kind":"meal","title":f"Dinner – {rr['name']}"}]
         if owner_hotel_id(rr)==hotel["hotel_id"]:
@@ -1282,7 +1478,7 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v92-dinner-diversity",
+    return {"service":"ok","logic_version":"v97-duration-aware-sunset",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -1460,7 +1656,7 @@ def generate(req:TripRequest):
 
             # Named lunch is chosen for the exact date/time and preferably the same activity cluster.
             if i==1:
-                lunch_time="13:00"
+                lunch_time=day1_lunch_time(day_req)
             elif op["end"]<="12:30":
                 lunch_time="13:15"
             else:
@@ -1519,7 +1715,7 @@ def generate(req:TripRequest):
             if lun and "local_food" in yes and float(lun["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
             if din and "local_food" in yes and float(din["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
 
-            tl=timeline(hotel,i,pa,sec,lun,din,coff,day_mode,route_cache=route_cache)
+            tl=timeline(hotel,i,pa,sec,lun,din,coff,day_mode,day_req,route_cache=route_cache)
             weather_info=forecast.get(str(d))
             sunset=sunset_local(r["cluster_id"],d)
             day_title="Romantic discovery"
@@ -1534,6 +1730,14 @@ def generate(req:TripRequest):
               "sunset_local":sunset,
               "weather":{"source":"OPEN_METEO_LIVE_FORECAST",**weather_info} if weather_info else {"source":"SEASONAL_PLANNING_NOT_LIVE_FORECAST","mode":day_mode,"confidence":"seasonal"},
               "activity":pa,"secondary_activity":sec,
+              "hotel_micro_experience":{
+                  "type":"romantic_photography",
+                  "title":hotel_photo_experience(hotel,day_mode),
+                  "timing_preference":hotel_photo_timing(hotel),
+                  "sunset_local":sunset_local(hotel["cluster_id"],d) if hotel_photo_timing(hotel)=="sunset_preferred" else None,
+                  "seasonal_anchor":(hotel_photo_timing(hotel)=="sunset_preferred" and day_mode!="rainy"),
+                  "counts_as_external_activity":False
+              } if i==1 else None,
               "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"]),
                         "lunch_policy":lun.get("lunch_policy")} if lun else None,
               "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
@@ -1543,6 +1747,7 @@ def generate(req:TripRequest):
                          "repeat_policy":din.get("repeat_policy"),"trip_dinner_use_count":din.get("dinner_use_count")} if din else None,
               "timeline":tl,
               "timeline_qa":{"external_activity_count":1+(1 if sec else 0),
+                 "hotel_micro_experience_count":1 if i==1 else 0,
                  "activity_family":fam,"primary_cluster":r["cluster_id"],
                  "day1_guardrail_applied":(i==1),
                  "day1_local_band_ok":(r["travel_band"]=="0–15 min") if i==1 else None,
@@ -1595,9 +1800,9 @@ def generate(req:TripRequest):
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v92 Hotel-Aware + Dinner Diversity</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v97 Duration-Aware Seasonal Sunset Flow</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
-<label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
+<label>Ώρα άφιξης</label><input id="arrival" type="time" value="11:00"><label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
 <label>Μέγιστη διαδρομή</label><select id="drive"><option value="15">15 min</option><option value="20" selected>20 min</option><option value="30">30 min</option><option value="45">45 min</option></select>
 <label>Couple style</label><select id="style"><option value="mixed" selected>Mixed</option><option value="romantic_luxury">Romantic luxury</option><option value="authentic">Authentic Cyprus</option><option value="active">Active couple</option><option value="sea_lovers">Sea lovers</option><option value="food_wine">Food & wine</option></select>
@@ -1610,7 +1815,7 @@ body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{backgrou
 const P={sea:"Sea activities",swimming:"Swimming / sea bathing",beach:"Beaches",boat:"Boat / cruises",diving:"Diving / snorkelling",golf:"Golf",horse:"Horse riding",cycling:"Cycling",hiking:"Hiking / walking",viewpoints:"Viewpoints / photography",winery:"Winery / wine tasting",local_food:"Local gastronomy / products",crafts:"Χειροτεχνίες / βιωματικά εργαστήρια",cooking:"Cooking workshops",museums:"Museums / indoor culture",archaeology:"Archaeology / heritage",villages:"Traditional villages",religious:"Churches / monasteries",wellness:"Spa / wellness"};
 const $=x=>document.getElementById(x);
 async function init(){let h=await (await fetch('/api/v1/meta/hotels')).json();$('hotel').innerHTML=h.map(x=>`<option value="${x.hotel_id}">${x.name} — ${x.area||''}</option>`).join('');$('prefs').innerHTML=Object.entries(P).map(([k,v])=>`<span>${v}</span><select id="p_${k}"><option value="any">No preference</option><option value="yes">Yes</option><option value="no">No</option></select>`).join('');let d=new Date();d.setDate(d.getDate()+14);$('date').value=d.toISOString().slice(0,10)}
-async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div><div class="'+(d.hotel_operation.status==='VERIFIED_OPEN'?'ok':'warn')+'">Hotel date check: '+d.hotel_operation.status+' · '+d.hotel_operation.reason+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>x.activity?`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Season: ${x.season} · Weather planning: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source==='SEASONAL_PLANNING_NOT_LIVE_FORECAST'?'Seasonal estimate — not live forecast':x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η κοντινή δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.lunch?`<div class=ok><b>Lunch:</b> ${x.lunch.title}</div>`:'<div class=warn>Δεν βρέθηκε επαληθευμένο συγκεκριμένο lunch venue.</div>'}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`:`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><div class=warn>${x.operational_warning}</div></div>`).join('')+(d.warnings.length?'<div class=warn>'+d.warnings.join('<br>')+'</div>':'')}
+async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,arrival_time:$('arrival').value||'11:00',nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div><div class="'+(d.hotel_operation.status==='VERIFIED_OPEN'?'ok':'warn')+'">Hotel date check: '+d.hotel_operation.status+' · '+d.hotel_operation.reason+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>x.activity?`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Season: ${x.season} · Weather planning: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source==='SEASONAL_PLANNING_NOT_LIVE_FORECAST'?'Seasonal estimate — not live forecast':x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η κοντινή δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.lunch?`<div class=ok><b>Lunch:</b> ${x.lunch.title}</div>`:'<div class=warn>Δεν βρέθηκε επαληθευμένο συγκεκριμένο lunch venue.</div>'}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`:`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><div class=warn>${x.operational_warning}</div></div>`).join('')+(d.warnings.length?'<div class=warn>'+d.warnings.join('<br>')+'</div>':'')}
 init();</script></body></html>"""
 
 @app.get("/",response_class=HTMLResponse)
