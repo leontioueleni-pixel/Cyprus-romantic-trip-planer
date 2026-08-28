@@ -532,6 +532,50 @@ def is_swim_experience(r):
 def is_indoor(r):
     return "indoor" in str(pld(r).get("Indoor_Outdoor_Both") or "").lower()
 
+def requires_pre_photo_shower_recovery(activity_obj):
+    if not activity_obj:
+        return False
+    category=(activity_obj.get("category") or "").lower()
+    subcategory=(activity_obj.get("subcategory") or "").lower()
+    title=(activity_obj.get("title") or "").lower()
+
+    # A spa inside a hotel whose NAME includes "Beach" is not automatically a sea/pool activity.
+    if "wellness" in category or "spa" in category:
+        return False
+
+    blob=" ".join([category,subcategory,title])
+    return any(x in blob for x in [
+        "sea & beach","blue flag beach","swimming","sea bathing","pool",
+        "boat","cruise","charter","yacht","blue lagoon",
+        "kayak","canoe","paddleboard","snorkel","diving"
+    ])
+
+def required_photo_recovery_minutes(a,b=None):
+    return 60 if (
+        requires_pre_photo_shower_recovery(a) or requires_pre_photo_shower_recovery(b)
+    ) else 0
+
+def post_water_photo_scheduled(timeline_rows,a,b=None):
+    if required_photo_recovery_minutes(a,b)<60:
+        return False
+    # PRE_ACTIVITY_FALLBACK is before the primary activity, so the water activity
+    # has not happened yet and no shower/recovery is required for that photo.
+    for x in timeline_rows:
+        if x.get("kind")!="hotel_experience":
+            continue
+        if x.get("schedule_mode") in ["SEASONAL_SUNSET_ANCHOR","PRE_DINNER_FALLBACK"]:
+            return True
+    return False
+
+def post_water_photo_recovery_satisfied(timeline_rows,a,b=None):
+    if not post_water_photo_scheduled(timeline_rows,a,b):
+        return True
+    return any(
+        x.get("recovery_reason")=="water_activity_before_photography"
+        and int(x.get("minimum_recovery_minutes") or 0)>=60
+        for x in timeline_rows
+    )
+
 def activity_intensity(r):
     """Return 1=light, 2=moderate, 3=high physical/mental load."""
     t=txt(r)
@@ -1360,6 +1404,11 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
         else:
             back=None; back_min=0
 
+        # HARD RULE: after sea, swimming, pool-like water activity, boat/cruise/yacht
+        # or similar experience, at least 60 minutes of shower / rest / change are
+        # required before photography.
+        photo_recovery_min=required_photo_recovery_minutes(a,b)
+
         # If sunset is still far away (typical summer), allow a 45-min coffee first
         # only when coffee + its travel can finish at least 15 min before the return
         # journey needed for photography.
@@ -1377,7 +1426,7 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
             else:
                 rback=live_route(row_location(rr0),hotel_location(hotel),route_cache) if live_enabled else None
                 cafe_back=rback["minutes"] if rback else 10
-            if minute_of_day(tentative_end)+cafe_back+15 <= minute_of_day(photo_start):
+            if minute_of_day(tentative_end)+cafe_back+photo_recovery_min+15 <= minute_of_day(photo_start):
                 if ctravel>0:
                     out.append({"time":f"{addm(tentative_start,-ctravel)}–{tentative_start}","kind":"travel",
                                 "title":f"Travel to {rr0['name']} (~{ctravel} min {'live' if crt else 'planning'})"})
@@ -1394,14 +1443,23 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
                 else:
                     back_min=0; back=None
 
-        depart_back=addm(photo_start,-back_min)
+        recovery_start=addm(photo_start,-photo_recovery_min)
+        depart_back=addm(recovery_start,-back_min)
         if depart_back>=cursor:
             if depart_back>cursor:
                 out.append({"time":f"{cursor}–{depart_back}","kind":"rest",
-                            "title":"Free time / recovery before sunset"})
+                            "title":"Free time before returning to the hotel"})
             if back_min>0:
-                out.append({"time":f"{depart_back}–{photo_start}","kind":"travel",
-                            "title":f"Return to {hotel['name']} for sunset photography (~{back_min} min {'live' if back else 'planning'})"})
+                out.append({"time":f"{depart_back}–{recovery_start}","kind":"travel",
+                            "title":f"Return to {hotel['name']} (~{back_min} min {'live' if back else 'planning'})"})
+            if photo_recovery_min:
+                out.append({"time":f"{recovery_start}–{photo_start}","kind":"rest",
+                            "title":"Shower / bath, rest & change before romantic photography",
+                            "minimum_recovery_minutes":60,
+                            "recovery_reason":"water_activity_before_photography"})
+            elif recovery_start>cursor:
+                out.append({"time":f"{recovery_start}–{photo_start}","kind":"rest",
+                            "title":"Short rest before sunset photography"})
             out.append({"time":f"{photo_start}–{photo_end}","kind":"hotel_experience",
                         "title":hotel_photo_experience(hotel,weather_mode),
                         "timing_preference":"sunset_preferred",
@@ -1441,11 +1499,20 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
         # If a sunset-preferred photo was impossible earlier, use a short pre-dinner
         # hotel fallback only when the couple is already at the selected hotel.
         has_photo=any(x.get("kind")=="hotel_experience" for x in out)
+        fallback_recovery=required_photo_recovery_minutes(a,b)
         if (day==1 and hotel_photo_timing(hotel)=="sunset_preferred" and
             weather_mode!="rainy" and not has_photo and current_loc==hotel_location(hotel) and
-            minute_of_day(dep)-minute_of_day(cursor)>=30):
-            pstart=max(cursor,addm(dep,-30))
-            if pstart<dep:
+            minute_of_day(dep)-minute_of_day(cursor)>=30+fallback_recovery):
+            pstart=addm(dep,-30)
+            if fallback_recovery:
+                recovery_start=addm(pstart,-fallback_recovery)
+                if recovery_start>=cursor:
+                    out.append({"time":f"{recovery_start}–{pstart}","kind":"rest",
+                                "title":"Shower / bath, rest & change before romantic photography",
+                                "minimum_recovery_minutes":60,
+                                "recovery_reason":"water_activity_before_photography"})
+                    cursor=pstart
+            if pstart<dep and cursor<=pstart:
                 out.append({"time":f"{pstart}–{dep}","kind":"hotel_experience",
                             "title":hotel_photo_experience(hotel,weather_mode),
                             "timing_preference":"sunset_preferred",
@@ -1478,7 +1545,7 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,req,route_cache=None):
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v97-duration-aware-sunset",
+    return {"service":"ok","logic_version":"v100-sequenced-water-photo-recovery",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -1736,6 +1803,7 @@ def generate(req:TripRequest):
                   "timing_preference":hotel_photo_timing(hotel),
                   "sunset_local":sunset_local(hotel["cluster_id"],d) if hotel_photo_timing(hotel)=="sunset_preferred" else None,
                   "seasonal_anchor":(hotel_photo_timing(hotel)=="sunset_preferred" and day_mode!="rainy"),
+                  "scheduled":any(x.get("kind")=="hotel_experience" for x in tl),
                   "counts_as_external_activity":False
               } if i==1 else None,
               "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"]),
@@ -1747,7 +1815,15 @@ def generate(req:TripRequest):
                          "repeat_policy":din.get("repeat_policy"),"trip_dinner_use_count":din.get("dinner_use_count")} if din else None,
               "timeline":tl,
               "timeline_qa":{"external_activity_count":1+(1 if sec else 0),
-                 "hotel_micro_experience_count":1 if i==1 else 0,
+                 "hotel_micro_experience_count":(
+                     sum(1 for x in tl if x.get("kind")=="hotel_experience") if i==1 else 0
+                 ),
+                 "pre_photo_water_recovery_required":(
+                     post_water_photo_scheduled(tl,pa,sec) if i==1 else False
+                 ),
+                 "pre_photo_water_recovery_satisfied":(
+                     post_water_photo_recovery_satisfied(tl,pa,sec) if i==1 else True
+                 ),
                  "activity_family":fam,"primary_cluster":r["cluster_id"],
                  "day1_guardrail_applied":(i==1),
                  "day1_local_band_ok":(r["travel_band"]=="0–15 min") if i==1 else None,
@@ -1800,7 +1876,7 @@ def generate(req:TripRequest):
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v97 Duration-Aware Seasonal Sunset Flow</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v100 Sequenced Water-to-Photo Recovery</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Ώρα άφιξης</label><input id="arrival" type="time" value="11:00"><label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
