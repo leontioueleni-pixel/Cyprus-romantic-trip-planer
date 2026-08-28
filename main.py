@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 ROOT=Path(__file__).resolve().parent
 DB=ROOT/"planner.sqlite3"
-app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v52")
+app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v60")
 
 def conn():
     c=sqlite3.connect(DB); c.row_factory=sqlite3.Row; return c
@@ -270,7 +270,7 @@ def weekday_allowed(text,d):
 def hotel_date_status(hotel,start_date,end_date):
     p=pld(hotel)
     current=str(p.get("Current_Status") or "").strip().lower()
-    if current and current not in ["operating","open"]:
+    if current and not (current=="operating" or current=="open" or current.startswith("operating ") or current.startswith("operating /") or current.startswith("open ")):
         return {"status":"CLOSED","reason":f"Current hotel status: {p.get('Current_Status')}"}
     months=p.get("Operating_Months")
     if months:
@@ -649,6 +649,19 @@ def venue_public_meta(r):
             "venue_type":p.get("Venue_Type"),"price_range":p.get("Price_Range")}
 
 
+def hotel_restaurant_repeat_exception(r,hotel):
+    """Allow dinner repetition only for the selected hotel's own restaurant
+    when stored public-review evidence is genuinely strong."""
+    if owner_hotel_id(r)!=hotel["hotel_id"]:
+        return False
+    p=pld(r)
+    try: rating=float(p.get("Current_Rating_5") or 0)
+    except: rating=0
+    try: reviews=int(p.get("Current_Review_Count") or 0)
+    except: reviews=0
+    return rating>=4.6 and reviews>=150
+
+
 def owner_hotel_open_at(r,hotel,d,hhmm):
     if owner_hotel_id(r)!=hotel["hotel_id"]:
         return restaurant_open_at(r,d,hhmm)
@@ -758,46 +771,71 @@ def restaurant_open_for_dinner(r,d):
         if start<=20*60<=end:return True
     return False
 
-def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None):
+def dinner(c,req,hotel,used,d,route_cache=None,avoid_ids=None,dinner_counts=None,last_dinner_id=None):
     route_cache=route_cache if route_cache is not None else {}
     avoid_ids=set(avoid_ids or [])
+    dinner_counts=dinner_counts if dinner_counts is not None else {}
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     rows=c.execute("""select r.*,m.travel_band from restaurant r join hotel_restaurant_mapping m
       on m.restaurant_id=r.restaurant_id where m.hotel_id=? and r.data_status='Verified'""",(req.hotel_id,)).fetchall()
+
+    def eligible(r):
+        if not restaurant_hotel_compatible(r,hotel):return False
+        if r["restaurant_id"] in avoid_ids:return False
+        if "dinner" not in (r["meal_type"] or "").lower():return False
+        if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":return False
+        if not owner_hotel_open_for_dinner(r,hotel,d):return False
+        if not strict_drive_ok(r,req.max_drive_min,live_enabled):return False
+        return True
+
+    def route_if_ok(r):
+        if not live_enabled:return None,True
+        rt=live_route(hotel_location(hotel),row_location(r),route_cache)
+        return rt,bool(rt and rt["minutes"]<=req.max_drive_min)
+
+    def dinner_score(r,repeat_count=0):
+        sc=(float(r["romantic_score"] or 0)*3+
+            float(r["authentic_score"] or 0)*(2 if req.couple_style in ["authentic","food_wine"] else .7)+
+            public_rating_bonus(r)+PROX.get(r["travel_band"],0)+
+            (45 if owner_hotel_id(r)==hotel["hotel_id"] else 0)+
+            (8 if r["cluster_id"]==hotel["cluster_id"] else 0))
+        # Strong diversity pressure: even an allowed hotel repeat should lose
+        # to a similarly suitable unused restaurant.
+        sc-=repeat_count*65
+        if last_dinner_id and r["restaurant_id"]==last_dinner_id:
+            sc-=45
+        return sc
+
+    # First pass: never repeat a dinner venue while an unused valid venue exists.
     valid=[]
     for r in rows:
-        if not restaurant_hotel_compatible(r,hotel):continue
-        if r["restaurant_id"] in avoid_ids:continue
-        if r["restaurant_id"] in used:continue
-        if "dinner" not in (r["meal_type"] or "").lower():
-            continue
-        if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
-        if not owner_hotel_open_for_dinner(r,hotel,d):continue
-        if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
-        rt=None
-        if live_enabled:
-            rt=live_route(hotel_location(hotel),row_location(r),route_cache)
-            if not rt or rt["minutes"]>req.max_drive_min:continue
-        valid.append((r,rt))
+        if not eligible(r):continue
+        if dinner_counts.get(r["restaurant_id"],0)>0 or r["restaurant_id"] in used:continue
+        rt,ok=route_if_ok(r)
+        if not ok:continue
+        valid.append((dinner_score(r,0),r,rt,"NEW"))
+
+    # Second pass: repetition is permitted ONLY for a highly reviewed restaurant
+    # owned by the selected hotel. External restaurant repetition remains forbidden.
     if not valid:
-        # Better to repeat a genuinely open, suitable restaurant than invent or omit dinner.
         for r in rows:
-            if not restaurant_hotel_compatible(r,hotel):continue
-            if r["restaurant_id"] in avoid_ids:continue
-            if "dinner" not in (r["meal_type"] or "").lower():
-                continue
-            if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
-            if not owner_hotel_open_for_dinner(r,hotel,d):continue
-            if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
-            rt=None
-            if live_enabled:
-                rt=live_route(hotel_location(hotel),row_location(r),route_cache)
-                if not rt or rt["minutes"]>req.max_drive_min:continue
-            valid.append((r,rt))
+            if not eligible(r):continue
+            count=dinner_counts.get(r["restaurant_id"],0)
+            if count<=0:continue
+            if not hotel_restaurant_repeat_exception(r,hotel):continue
+            rt,ok=route_if_ok(r)
+            if not ok:continue
+            valid.append((dinner_score(r,count),r,rt,"HOTEL_HIGH_RATING_REPEAT"))
+
     if not valid:return None
-    valid.sort(key=lambda x:float(x[0]["romantic_score"] or 0)*3+float(x[0]["authentic_score"] or 0)*(2 if req.couple_style in ["authentic","food_wine"] else .7)+public_rating_bonus(x[0])+PROX.get(x[0]["travel_band"],0)+(45 if owner_hotel_id(x[0])==hotel["hotel_id"] else 0)+(8 if x[0]["cluster_id"]==hotel["cluster_id"] else 0),reverse=True)
-    r,rt=valid[0]; used.add(r["restaurant_id"])
-    return {"row":r,"live_route":rt}
+    valid.sort(key=lambda x:x[0],reverse=True)
+    _,r,rt,repeat_policy=valid[0]
+    rid=r["restaurant_id"]
+    used.add(rid)
+    dinner_counts[rid]=dinner_counts.get(rid,0)+1
+    return {"row":r,"live_route":rt,"repeat_policy":repeat_policy,
+            "dinner_use_count":dinner_counts[rid]}
+
 
 def obj(r,op,req):
     rt=op.get("live_route")
@@ -888,11 +926,13 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
         ret=live_route(restaurant_loc,hotel_location(hotel),route_cache) if live_enabled else None
         retmin=ret["minutes"] if ret else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
         out.append({"time":"after dinner","kind":"travel","title":f"{rr['name']} → {hotel['name']} (~{retmin} min {'live' if ret else 'planning'})"})
+    else:
+        out.append({"time":"20:00","kind":"warning","title":"No unused verified dinner venue is available under the current rules. External restaurant repetition is not allowed; a hotel restaurant may repeat only with stored rating ≥4.6/5 and ≥150 reviews."})
     return out
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v59-hotel-aware-season-weather",
+    return {"service":"ok","logic_version":"v60-dinner-diversity",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -913,7 +953,7 @@ def generate(req:TripRequest):
         if hotel_op["status"]=="CLOSED":
             raise HTTPException(422,detail={"message":"Selected hotel is not operating for the requested dates.","hotel_operation":hotel_op})
 
-        used=set(); lunch_used=set(); coffee_used=set(); dinner_used=set(); days=[]; route_cache={}
+        used=set(); lunch_used=set(); coffee_used=set(); dinner_used=set(); dinner_counts={}; last_dinner_id=None; days=[]; route_cache={}
         family_counts={}; last_cluster=None
         yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
         covered=set()
@@ -989,7 +1029,9 @@ def generate(req:TripRequest):
             coff=coffee_stop(c,day_req,hotel,d,coffee_used,route_cache=route_cache,
                              preferred_cluster=preferred_cluster,avoid_ids=same_day)
             if coff:same_day.add(coff["row"]["restaurant_id"])
-            din=dinner(c,day_req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day)
+            din=dinner(c,day_req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day,
+                       dinner_counts=dinner_counts,last_dinner_id=last_dinner_id)
+            if din:last_dinner_id=din["row"]["restaurant_id"]
 
             if lun and "local_food" in yes and float(lun["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
             if din and "local_food" in yes and float(din["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
@@ -1013,7 +1055,8 @@ def generate(req:TripRequest):
               "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
               "dinner":{"entity_id":din["row"]["restaurant_id"],"title":din["row"]["name"],**venue_public_meta(din["row"]),"travel_band":din["row"]["travel_band"],
                         "travel_minutes":din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(din["row"]["travel_band"],60),
-                        "travel_source":"GOOGLE_ROUTES" if din.get("live_route") else "PLANNING_BAND"} if din else None,
+                        "travel_source":"GOOGLE_ROUTES" if din.get("live_route") else "PLANNING_BAND",
+                         "repeat_policy":din.get("repeat_policy"),"trip_dinner_use_count":din.get("dinner_use_count")} if din else None,
               "timeline":tl,
               "timeline_qa":{"external_activity_count":1+(1 if sec else 0),
                  "activity_family":fam,"primary_cluster":r["cluster_id"],
@@ -1043,13 +1086,14 @@ def generate(req:TripRequest):
         "max_drive":"LIVE_HARD_LIMIT" if routing_live else "HARD_CONSERVATIVE_BAND_FILTER",
         "explicit_no_preferences":"EXCLUDED","unverified_activities":"EXCLUDED",
         "lunch":"NAMED_VERIFIED_OPEN_VENUE_ONLY",
+        "dinner_diversity":"NO_EXTERNAL_REPEATS; HOTEL REPEAT ONLY WITH STORED RATING >=4.6 AND >=150 REVIEWS",
         "secondary_activity":"SAME_CLUSTER_OR_LIVE_NEARBY_AND_TIME_FIT"},
       "unmet_yes_preferences":unmet,"days":days,"warnings":warnings}
 
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v59 Hotel-Aware Season & Weather</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v60 Hotel-Aware + Dinner Diversity</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
