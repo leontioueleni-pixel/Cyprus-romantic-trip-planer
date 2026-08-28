@@ -189,17 +189,95 @@ def addm(hhmm,m):
     h,mi=map(int,hhmm.split(":")); x=h*60+mi+m
     return f"{x//60:02d}:{x%60:02d}"
 
-def day_open(r,d):
-    p=pld(r); s=str(p.get("Opening_Days") or "").strip().lower()
-    if not s:return False,"UNKNOWN"
-    if any(x in s for x in ["daily","monday–sunday","monday-sunday","7 days","every day","public access"]):
-        return True,"VERIFIED_RULE"
+MONTHS={"jan":1,"january":1,"feb":2,"february":2,"mar":3,"march":3,"apr":4,"april":4,
+"may":5,"jun":6,"june":6,"jul":7,"july":7,"aug":8,"august":8,"sep":9,"sept":9,"september":9,
+"oct":10,"october":10,"nov":11,"november":11,"dec":12,"december":12}
+
+def explicit_selected_date_match(text,d):
+    low=text.lower()
+    if "selected" not in low and "published" not in low and "dates include" not in low:return None
+    # Isolate the section belonging to the target month and collect day numbers before the next month token.
+    month_names=[k for k,v in MONTHS.items() if v==d.month]
+    starts=[]
+    for mn in month_names:
+        for m in re.finditer(rf'\b{re.escape(mn)}\b',low):
+            starts.append((m.start(),m.end()))
+    if not starts:return False
+    all_month_matches=sorted((m.start(),m.end()) for mn in MONTHS for m in re.finditer(rf'\b{re.escape(mn)}\b',low))
+    for st,en in starts:
+        nxt=min([a for a,b in all_month_matches if a>st],default=len(low))
+        seg=low[en:nxt]
+        # Remove years and clock times before extracting day numbers.
+        seg=re.sub(r'\b20\d{2}\b',' ',seg)
+        seg=re.sub(r'\b\d{1,2}:\d{2}\b',' ',seg)
+        nums=[int(x) for x in re.findall(r'\b([0-3]?\d)\b',seg)]
+        if d.day in nums:return True
+    return False
+
+def weekday_allowed(text,d):
+    low=text.lower()
     day=d.strftime("%A").lower()
     aliases={"monday":["monday","mon"],"tuesday":["tuesday","tue"],"wednesday":["wednesday","wed"],
              "thursday":["thursday","thu"],"friday":["friday","fri"],"saturday":["saturday","sat"],"sunday":["sunday","sun"]}
-    if re.search(rf'closed[^.;,]*\b{day}\b|\b{day}\b[^.;,]*closed',s):return False,"CLOSED"
-    if any(re.search(rf'\b{a}\b',s) for a in aliases[day]):return True,"VERIFIED_RULE"
-    # numeric or generic by-reservation schedules without an explicit day are not safe enough
+    if re.search(rf'closed[^.;,]*\b{day}\b|\b{day}\b[^.;,]*closed',low):return False
+    # Ranges such as Monday–Friday / Mon–Sat.
+    order=["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+    short={"mon":"monday","tue":"tuesday","wed":"wednesday","thu":"thursday","fri":"friday","sat":"saturday","sun":"sunday"}
+    for a,b in re.findall(r'\b(mon|tue|wed|thu|fri|sat|sun)(?:day)?\s*[–-]\s*(mon|tue|wed|thu|fri|sat|sun)(?:day)?\b',low):
+        ia=order.index(short[a]); ib=order.index(short[b]); di=order.index(day)
+        if ia<=di<=ib:return True
+    for fulla,fullb in re.findall(r'\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*[–-]\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',low):
+        ia=order.index(fulla); ib=order.index(fullb); di=order.index(day)
+        if ia<=di<=ib:return True
+    if any(re.search(rf'\b{a}\b',low) for a in aliases[day]):return True
+    return None
+
+
+def hotel_date_status(hotel,start_date,end_date):
+    p=pld(hotel)
+    current=str(p.get("Current_Status") or "").strip().lower()
+    if current and current not in ["operating","open"]:
+        return {"status":"CLOSED","reason":f"Current hotel status: {p.get('Current_Status')}"}
+    months=p.get("Operating_Months")
+    if months:
+        allowed=set()
+        if isinstance(months,list):
+            for x in months:
+                try:allowed.add(int(x))
+                except:pass
+        else:
+            for x in re.findall(r'\b(1[0-2]|[1-9])\b',str(months)):
+                allowed.add(int(x))
+        d=start_date
+        while d<=end_date:
+            if allowed and d.month not in allowed:
+                return {"status":"CLOSED","reason":f"Hotel not operating in month {d.month} according to stored schedule."}
+            d+=timedelta(days=1)
+        return {"status":"VERIFIED_OPEN","reason":"Stored operating months cover the trip dates."}
+    # The current hotel dataset does not yet contain exact seasonal opening calendars.
+    # Be explicit rather than pretending the selected dates are verified.
+    return {"status":"RECHECK","reason":"Exact hotel seasonal operating calendar is not stored yet; current status is Operating."}
+
+def day_open(r,d):
+    p=pld(r); od=str(p.get("Opening_Days") or "").strip(); oh=str(p.get("Opening_Hours") or "")
+    s=od.lower()
+    if not s:return False,"UNKNOWN"
+    selected=explicit_selected_date_match(od+"; "+oh,d)
+    if selected is not None:
+        return (selected,"EXACT_DATE" if selected else "NOT_SELECTED_DATE")
+    # Explicit closures.
+    if d.month==12 and d.day==25 and "christmas" in s:return False,"HOLIDAY_CLOSED"
+    if d.month==1 and d.day==1 and "new year" in s:return False,"HOLIDAY_CLOSED"
+    if any(x in s for x in ["daily","monday–sunday","monday-sunday","7 days","every day","public access","year-round","year round"]):
+        return True,"VERIFIED_RULE"
+    wd=weekday_allowed(od+"; "+oh,d)
+    if wd is True:return True,"VERIFIED_RULE"
+    if wd is False:return False,"CLOSED"
+    # Season-dependent schedules can still be accepted if the hours text contains an explicit weekday rule for that season.
+    if "season-dependent" in s or "season dependent" in s:
+        wd=weekday_allowed(oh,d)
+        if wd is not None:return wd,"SEASONAL_WEEKDAY_RULE" if wd else "CLOSED"
+    # Generic by-reservation / operator-specific activities without a dated schedule remain excluded.
     return False,"UNKNOWN"
 
 def month_ok(r,d,mode):
@@ -208,18 +286,82 @@ def month_ok(r,d,mode):
     if mode in ("normal","heatwave","rainy") and d.month in [5,6,7,8,9,10] and str(p.get("Summer_Suitable") or "")=="No":return False
     return True
 
-def time_window(r):
+def _first_time_range(text):
+    m=re.search(r'(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})',text)
+    if not m:return None
+    return f"{int(m.group(1)):02d}:{m.group(2)}",f"{int(m.group(3)):02d}:{m.group(4)}"
+
+def time_window(r,d):
     p=pld(r)
+    s=str(p.get("Opening_Hours") or "")
+    low=s.lower()
+    # Exact selected-date workshop: use a time range from the target-month/date section when available.
+    if explicit_selected_date_match(str(p.get("Opening_Days") or "")+"; "+s,d):
+        tr=_first_time_range(s)
+        if tr:return tr[0],tr[1],"EXACT_DATE_TEXT"
+    # Exact recurring seasonal date ranges commonly used by Cyprus sites.
+    exact_pairs=[
+      (((4,16),(9,15)),"16 apr","15 sep"),
+      (((3,1),(9,30)),"1 mar","30 sep"),
+      (((4,2),(8,31)),"2 apr","31 aug"),
+    ]
+    md=(d.month,d.day)
+    for (a,b),ka,kb in exact_pairs:
+        if ka in low and kb in low:
+            # first segment covers a..b; following segment covers the complementary season.
+            semis=s.split(";")
+            first=semis[0] if semis else s
+            second=semis[1] if len(semis)>1 else ""
+            chosen=first if a<=md<=b else second
+            tr=_first_time_range(chosen)
+            if tr:return tr[0],tr[1],"EXACT_SEASON_RANGE"
+    # 16 Sep–15 Apr spans the year boundary and is usually paired with 16 Apr–15 Sep.
+    if "16 sep" in low and "15 apr" in low and "16 apr" in low and "15 sep" in low:
+        semis=s.split(";")
+        chosen=(semis[0] if ((4,16)<=md<=(9,15)) else (semis[1] if len(semis)>1 else s))
+        tr=_first_time_range(chosen)
+        if tr:return tr[0],tr[1],"EXACT_SEASON_RANGE"
+    # Date-season ranges such as 16 Apr–15 Sep / 16 Sep–15 Apr.
+    if d.month in [4,5,6,7,8,9]:
+        for key in ["summer","apr–oct","apr-oct","may–oct","may-oct","2 apr–31 aug","2 apr-31 aug","16 apr–15 sep","16 apr-15 sep","1 mar–30 sep","1 mar-30 sep","jul–aug","jul-aug"]:
+            if key in low:
+                seg=low[low.index(key):]
+                nxt=seg.find(";")
+                if nxt!=-1:seg=seg[:nxt]
+                tr=_first_time_range(seg)
+                if tr:return tr[0],tr[1],"SEASON_TEXT"
+    else:
+        for key in ["winter","nov–mar","nov-mar","sep–jun","sep-jun","1 sep–1 apr","1 sep-1 apr","16 sep–15 apr","16 sep-15 apr","1 oct–28 feb","1 oct-28 feb"]:
+            if key in low:
+                seg=low[low.index(key):]
+                nxt=seg.find(";")
+                if nxt!=-1:seg=seg[:nxt]
+                tr=_first_time_range(seg)
+                if tr:return tr[0],tr[1],"SEASON_TEXT"
+    # Weekday-specific segments.
+    day=d.strftime("%A").lower()
+    short={"monday":"mon","tuesday":"tue","wednesday":"wed","thursday":"thu","friday":"fri","saturday":"sat","sunday":"sun"}[day]
+    parts=re.split(r';',s)
+    matching=[]
+    for part in parts:
+        pl=part.lower()
+        if re.search(rf'\b{day}\b|\b{short}\b',pl):
+            matching.append(part)
+        # Accept weekday ranges if they include the selected day.
+        if weekday_allowed(part,d) is True:
+            matching.append(part)
+    for part in matching:
+        tr=_first_time_range(part)
+        if tr:return tr[0],tr[1],"WEEKDAY_TEXT"
+    # Parsed generic times.
     if str(p.get("Time_Slot_Usable") or "").lower()=="yes":
         try:
             o=round(float(p["Parsed_Open_Time"])*1440); c=round(float(p["Parsed_Close_Time"])*1440)
             return f"{o//60:02d}:{o%60:02d}",f"{c//60:02d}:{c%60:02d}","PARSED"
         except:pass
-    s=str(p.get("Opening_Hours") or "")
-    m=re.search(r'(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})',s)
-    if m:return f"{int(m.group(1)):02d}:{m.group(2)}",f"{int(m.group(3)):02d}:{m.group(4)}","TEXT"
-    # outdoor public-access/daylight places can safely be used in daytime
-    if "daylight" in s.lower() or "24" in s.lower() or "public beach access" in s.lower():return "08:00","19:00","DAYLIGHT"
+    tr=_first_time_range(s)
+    if tr:return tr[0],tr[1],"TEXT"
+    if "daylight" in low or "24" in low or "public beach access" in low:return "08:00","19:00","DAYLIGHT"
     return None,None,"UNKNOWN"
 
 def weather_ok(r,mode,start):
@@ -253,7 +395,7 @@ def fit(r,d,mode,desired):
     opened,reason=day_open(r,d)
     if not opened:return None
     if not month_ok(r,d,mode):return None
-    o,c,conf=time_window(r)
+    o,c,conf=time_window(r,d)
     if not o or not c:return None  # strict: unknown operating time excluded
     dur=max(15,int(r["duration_min"] or 60))
     start=max(desired,o)
@@ -359,30 +501,50 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
         if non:return non[0]
     return rescored[0] if rescored else None
 
-def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,family_counts=None):
-    if req.pace=="relaxed": return None
-    desired=addm(primary["op"]["end"],max(45,primary["travel"]))
-    if desired>="17:45":return None
+def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,family_counts=None,not_before=None):
+    # Full days should normally contain a second nearby experience when it genuinely fits.
+    base_desired="16:45" if req.weather_mode=="heatwave" else ("15:00" if req.weather_mode=="rainy" else "15:30")
+    earliest=addm(primary["op"]["end"],45)
+    desired=max(base_desired,earliest,not_before or "00:00")
+    if desired>="18:15":return None
     cs=candidates(c,req,hotel,d,desired,used,route_cache)
     yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
     uncovered=yes-(covered_yes or set())
+    live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     rescored=[]
     for base,r,op in cs:
+        # Without live routing, require same geographic cluster for the second activity.
+        if not live_enabled and r["cluster_id"]!=primary["row"]["cluster_id"]:
+            continue
+        # With live routing, require the real leg from activity 1 to activity 2 to respect max drive.
+        seg=None
+        if live_enabled:
+            seg=live_route(row_location(primary["row"]),row_location(r),route_cache or {})
+            if not seg or seg["minutes"]>req.max_drive_min:
+                continue
+        dur=int(r["duration_min"] or 60)
+        if req.pace=="relaxed" and dur>75:continue
+        if req.pace=="balanced" and dur>120:continue
         sc=base+weather_priority(r,req,d)+style_bonus(r,req)
         if tags(r)&uncovered:sc+=45
-        if r["cluster_id"]==primary["row"]["cluster_id"]:sc+=35
+        if r["cluster_id"]==primary["row"]["cluster_id"]:sc+=55
         if family_counts:sc-=family_counts.get(category_family(r),0)*30
+        op=dict(op)
+        if seg:op["segment_live_route"]=seg
         rescored.append((sc,r,op))
     rescored.sort(key=lambda x:x[0],reverse=True)
     sunset=sunset_local(primary["row"]["cluster_id"],d)
     sunset_start=addm(sunset,-40)
     for sc,r,op in rescored:
-        if r["category"]==primary["row"]["category"]:continue
-        if "viewpoints" in tags(r):
+        if category_family(r)==category_family(primary["row"]):continue
+        # Viewpoints are more attractive near sunset if they are open then.
+        if "viewpoints" in tags(r) and req.weather_mode not in ["rainy"]:
             late=fit(r,d,req.weather_mode,sunset_start)
             if late and late["end"]<=addm(sunset,20):
+                late=dict(late)
+                if op.get("segment_live_route"):late["segment_live_route"]=op["segment_live_route"]
                 op=late
-        if op["start"]<desired or op["end"]>"18:45":continue
+        if op["start"]<desired or op["end"]>"19:15":continue
         return sc,r,op
     return None
 
@@ -427,8 +589,50 @@ def venue_public_meta(r):
     return {"rating_5":p.get("Current_Rating_5"),"review_count":p.get("Current_Review_Count"),
             "venue_type":p.get("Venue_Type"),"price_range":p.get("Price_Range")}
 
-def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None):
+
+def lunch_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None,target_time='13:15'):
     route_cache=route_cache if route_cache is not None else {}
+    avoid_ids=set(avoid_ids or [])
+    live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
+    rows=c.execute("""select r.*,m.travel_band from restaurant r join hotel_restaurant_mapping m
+      on m.restaurant_id=r.restaurant_id where m.hotel_id=? and r.data_status='Verified'""",(req.hotel_id,)).fetchall()
+    valid=[]
+    for r in rows:
+        if r["restaurant_id"] in avoid_ids or r["restaurant_id"] in used:continue
+        if "lunch" not in (r["meal_type"] or "").lower():continue
+        if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
+        if not restaurant_open_at(r,d,target_time):continue
+        if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
+        rt=None
+        if live_enabled:
+            rt=live_route(hotel_location(hotel),row_location(r),route_cache)
+            if not rt or rt["minutes"]>req.max_drive_min:continue
+        sc=float(r["romantic_score"] or 0)*2.5+float(r["authentic_score"] or 0)*(1.8 if req.couple_style in ["authentic","food_wine"] else .6)+public_rating_bonus(r)
+        if preferred_cluster and r["cluster_id"]==preferred_cluster:sc+=28
+        valid.append((sc,r,rt))
+    if not valid:
+        # Allow a repeat from another day if it is genuinely open; never invent a lunch venue.
+        for r in rows:
+            if r["restaurant_id"] in avoid_ids:continue
+            if "lunch" not in (r["meal_type"] or "").lower():continue
+            if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
+            if not restaurant_open_at(r,d,target_time):continue
+            if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
+            rt=None
+            if live_enabled:
+                rt=live_route(hotel_location(hotel),row_location(r),route_cache)
+                if not rt or rt["minutes"]>req.max_drive_min:continue
+            sc=float(r["romantic_score"] or 0)*2.5+float(r["authentic_score"] or 0)+public_rating_bonus(r)
+            if preferred_cluster and r["cluster_id"]==preferred_cluster:sc+=28
+            valid.append((sc,r,rt))
+    if not valid:return None
+    valid.sort(key=lambda x:x[0],reverse=True)
+    _,r,rt=valid[0]; used.add(r["restaurant_id"])
+    return {"row":r,"live_route":rt}
+
+def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None,avoid_ids=None):
+    route_cache=route_cache if route_cache is not None else {}
+    avoid_ids=set(avoid_ids or [])
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     rows=c.execute("""select r.*,m.travel_band from restaurant r join hotel_restaurant_mapping m
       on m.restaurant_id=r.restaurant_id where m.hotel_id=? and r.data_status='Verified'""",(req.hotel_id,)).fetchall()
@@ -436,7 +640,7 @@ def coffee_stop(c,req,hotel,d,used,route_cache=None,preferred_cluster=None):
     for r in rows:
         meal=(r["meal_type"] or "").lower()
         if not any(k in meal for k in ["coffee","drinks","light"]):continue
-        if r["restaurant_id"] in used:continue
+        if r["restaurant_id"] in avoid_ids or r["restaurant_id"] in used:continue
         if not restaurant_open_at(r,d,"16:30"):continue
         if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
         if r["cluster_id"]=="C13" and hotel["cluster_id"]!="C02":continue
@@ -524,53 +728,69 @@ def obj(r,op,req):
       "booking_required":op["booking"],"opening_check":"OPEN","opening_confidence":op["opening_confidence"],
       "data_status":r["data_status"]}
 
-def timeline(hotel,day,a,b,din,coffee,weather_mode,route_cache=None):
+def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
     route_cache=route_cache if route_cache is not None else {}
     out=[]; live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
     if day==1:
         out += [{"time":"11:00–11:30","kind":"hotel","title":"Arrival, check-in & settle in"},
-                {"time":"13:00–14:00","kind":"meal","title":"Relaxed lunch at/near hotel"},
-                {"time":"14:00–16:00","kind":"rest","title":"Room / pool / hotel rest"}]
+                {"time":"11:30–12:45","kind":"rest","title":"Room / hotel time"}]
     else:
         out.append({"time":"08:30–09:30","kind":"hotel","title":"Breakfast & unhurried start"})
+
+    # Day 1 lunch comes before the late-afternoon primary. Full-day lunch follows the morning primary.
+    if day==1:
+        if lunch:
+            rr=lunch["row"]; rt=lunch.get("live_route")
+            lt=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
+            out += [{"time":f"{addm('13:00',-lt)}–13:00","kind":"travel","title":f"Hotel → {rr['name']} (~{lt} min {'live' if rt else 'planning'})"},
+                    {"time":"13:00–14:15","kind":"meal","title":f"Lunch – {rr['name']}"},
+                    {"time":"14:15–16:00","kind":"rest","title":"Return / rest / pool / room"}]
+        else:
+            out += [{"time":"13:00","kind":"warning","title":"No verified named lunch venue available in the current database for this date/time."},
+                    {"time":"13:00–16:00","kind":"rest","title":"Hotel time / rest"}]
+
     at=a["travel_minutes"]; depart=addm(a["start_time"],-at)
     src="live" if a["travel_source"]=="GOOGLE_ROUTES" else "planning"
     out += [{"time":f"{depart}–{a['start_time']}","kind":"travel","title":f"Hotel → {a['title']} (~{at} min {src})"},
             {"time":f"{a['start_time']}–{a['end_time']}","kind":"activity","title":a["title"]}]
     cursor=a["end_time"]; current_loc=a["location_text"]
 
-    # Lunch/rest is placed chronologically before the second activity when feasible.
     if day>1:
+        lunch_start=(lunch.get("planned_time") if lunch else None) or ("13:00" if weather_mode=="heatwave" else "13:15")
+        lunch_end=addm(lunch_start,75)
+        if lunch:
+            rr=lunch["row"]
+            seg=live_route(current_loc,row_location(rr),route_cache) if live_enabled else lunch.get("live_route")
+            lt=seg["minutes"] if seg else BAND_PLAN.get(rr["travel_band"],10)
+            depart_l=addm(lunch_start,-lt)
+            if depart_l>cursor:
+                out.append({"time":f"{cursor}–{depart_l}","kind":"buffer","title":"Short free time"})
+            out += [{"time":f"{depart_l}–{lunch_start}","kind":"travel","title":f"Activity → {rr['name']} (~{lt} min {'live' if seg else 'planning'})"},
+                    {"time":f"{lunch_start}–{lunch_end}","kind":"meal","title":f"Lunch – {rr['name']}"}]
+            cursor=lunch_end; current_loc=row_location(rr)
+        else:
+            out.append({"time":lunch_start,"kind":"warning","title":"No verified named lunch venue available in the current database for this date/time."})
+            cursor=lunch_end
         if weather_mode=="heatwave":
-            if cursor<="13:00":
-                out.append({"time":"13:00–14:00","kind":"meal","title":"Lunch"})
-                out.append({"time":"14:00–16:30","kind":"rest","title":"Hotel rest / shade / pool"})
-                cursor="16:30"; current_loc=hotel_location(hotel)
-        elif cursor<="12:45" and (not b or b["start_time"]>="14:15"):
-            out.append({"time":"13:00–14:00","kind":"meal","title":"Lunch / local meal"})
-            cursor="14:00"
+            out.append({"time":f"{cursor}–16:30","kind":"rest","title":"Hotel / shaded rest during peak heat"})
+            cursor="16:30"; current_loc=hotel_location(hotel)
 
     if b:
-        seg=live_route(current_loc,b["location_text"],route_cache) if live_enabled else None
+        seg=live_route(current_loc,b["location_text"],route_cache) if live_enabled else b.get("segment_live_route")
         bt=seg["minutes"] if seg else b["travel_minutes"]
         dep=addm(b["start_time"],-bt)
         if dep>cursor:
             out.append({"time":f"{cursor}–{dep}","kind":"buffer","title":"Free time / short rest"})
         src="live" if seg else "planning"
-        out += [{"time":f"{dep}–{b['start_time']}","kind":"travel","title":f"Current stop → {b['title']} (~{bt} min {src})"},
+        out += [{"time":f"{dep}–{b['start_time']}","kind":"travel","title":f"Nearby transfer → {b['title']} (~{bt} min {src})"},
                 {"time":f"{b['start_time']}–{b['end_time']}","kind":"activity","title":b["title"]}]
         cursor=b["end_time"]; current_loc=b["location_text"]
-
-    # If lunch did not fit before activity 2, place it directly after activity 2.
-    if day>1 and weather_mode!="heatwave" and cursor<="14:30":
-        out.append({"time":f"{cursor}–{addm(cursor,60)}","kind":"meal","title":"Lunch / local meal"})
-        cursor=addm(cursor,60)
 
     if coffee and cursor<="17:30":
         rr=coffee["row"]; rt=live_route(current_loc,row_location(rr),route_cache) if live_enabled else coffee.get("live_route")
         ct=rt["minutes"] if rt else BAND_PLAN.get(rr["travel_band"],10)
         cstart=max("16:30",addm(cursor,ct)); cend=addm(cstart,45)
-        if cend<="18:30":
+        if cend<="18:45":
             out += [{"time":f"{addm(cstart,-ct)}–{cstart}","kind":"travel","title":f"Travel to {rr['name']} (~{ct} min {'live' if rt else 'planning'})"},
                     {"time":f"{cstart}–{cend}","kind":"coffee","title":f"{rr['name']} – coffee / drink"}]
             cursor=cend; current_loc=row_location(rr)
@@ -583,7 +803,7 @@ def timeline(hotel,day,a,b,din,coffee,weather_mode,route_cache=None):
         if dep>cursor:
             out.append({"time":f"{cursor}–{dep}","kind":"buffer","title":"Return / freshen up / pre-dinner rest"})
         out += [{"time":f"{dep}–20:00","kind":"travel","title":f"Current stop → {rr['name']} (~{dt} min {'live' if seg else 'planning'})"},
-                {"time":"20:00–21:30","kind":"meal","title":rr["name"]}]
+                {"time":"20:00–21:30","kind":"meal","title":f"Dinner – {rr['name']}"}]
         ret=live_route(restaurant_loc,hotel_location(hotel),route_cache) if live_enabled else None
         retmin=ret["minutes"] if ret else (din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(rr["travel_band"],10))
         out.append({"time":"after dinner","kind":"travel","title":f"{rr['name']} → {hotel['name']} (~{retmin} min {'live' if ret else 'planning'})"})
@@ -591,7 +811,7 @@ def timeline(hotel,day,a,b,din,coffee,weather_mode,route_cache=None):
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v55-dining-view-network",
+    return {"service":"ok","logic_version":"v56-date-operations-first",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -606,21 +826,29 @@ def generate(req:TripRequest):
     with conn() as c:
         hotel=c.execute("select * from hotel where hotel_id=?",(req.hotel_id,)).fetchone()
         if not hotel:raise HTTPException(422,"Unknown hotel_id")
-        used=set(); coffee_used=set(); dinner_used=set(); days=[]; route_cache={}
+        total_days=min(req.nights+1,7)
+        trip_end=req.start_date+timedelta(days=total_days-1)
+        hotel_op=hotel_date_status(hotel,req.start_date,trip_end)
+        if hotel_op["status"]=="CLOSED":
+            raise HTTPException(422,detail={"message":"Selected hotel is not operating for the requested dates.","hotel_operation":hotel_op})
+
+        used=set(); lunch_used=set(); coffee_used=set(); dinner_used=set(); days=[]; route_cache={}
         family_counts={}; last_cluster=None
         yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
         covered=set()
-        total_days=min(req.nights+1,7)
         forecast=live_weather(hotel["cluster_id"],req.start_date,total_days) if req.weather_mode=="auto" else {}
+
         def mode_for(d):
             if req.weather_mode!="auto":return req.weather_mode
             item=forecast.get(str(d))
             if item:return item["mode"]
             return "winter" if d.month in [12,1,2] else "normal"
+
         warm_trip=req.start_date.month in [5,6,7,8,9,10] and mode_for(req.start_date) in ["normal","heatwave"]
         sea_requested=("sea" in yes or "swimming" in yes or req.couple_style=="sea_lovers")
         require_swim=total_days>=4 and warm_trip and sea_requested
         swim_covered=False; swim_count=0; last_primary_was_swim=False
+
         for i in range(1,total_days+1):
             d=req.start_date+timedelta(days=i-1)
             day_mode=mode_for(d)
@@ -629,34 +857,63 @@ def generate(req:TripRequest):
             swimming_explicit=(req.prefs.get("swimming","any") or "any").lower()=="yes"
             avoid_swim=last_primary_was_swim or (swim_count>=2 and not swimming_explicit)
             if force_swim:avoid_swim=False
+
             p=pick_primary(c,day_req,hotel,d,i,used,covered_yes=covered,force_swim=force_swim,
                            avoid_swim=avoid_swim,route_cache=route_cache,
                            family_counts=family_counts,last_cluster=last_cluster)
-            if not p:continue
+            if not p:
+                days.append({"day":i,"date":str(d),"title":"No valid itinerary day",
+                    "weather_mode_used":day_mode,
+                    "operational_warning":"No Verified activity was confirmed open at a usable time for this exact date under the selected filters.",
+                    "timeline":[]})
+                continue
+
             _,r,op=p; used.add(r["activity_id"]); covered |= tags(r)&yes
             fam=category_family(r); family_counts[fam]=family_counts.get(fam,0)+1
             last_cluster=r["cluster_id"]
             if is_swim_experience(r):
                 swim_covered=True; swim_count+=1; last_primary_was_swim=True
             else:last_primary_was_swim=False
-            pa=obj(r,op,day_req); holder={"row":r,"op":op,"travel":pa["travel_minutes"]}
+            pa=obj(r,op,day_req)
+            holder={"row":r,"op":op,"travel":pa["travel_minutes"]}
+
+            # Named lunch is chosen for the exact date/time and preferably the same activity cluster.
+            if i==1:
+                lunch_time="13:00"
+            elif op["end"]<="12:30":
+                lunch_time="13:15"
+            else:
+                # Long morning activities push lunch later instead of overlapping it.
+                lunch_time=addm(op["end"],30)
+                if lunch_time>"15:30":lunch_time="15:30"
+            lun=lunch_stop(c,day_req,hotel,d,lunch_used,route_cache=route_cache,
+                           preferred_cluster=r["cluster_id"],target_time=lunch_time)
+            if lun:lun["planned_time"]=lunch_time
+
             sec=None
             if i>1:
+                secondary_not_before=addm(lunch_time,105)  # 75 min lunch + 30 min transition
                 q=pick_secondary(c,day_req,hotel,d,holder,used,covered_yes=covered,
-                                 route_cache=route_cache,family_counts=family_counts)
+                                 route_cache=route_cache,family_counts=family_counts,
+                                 not_before=secondary_not_before)
                 if q:
                     _,rr,oo=q; used.add(rr["activity_id"]); covered |= tags(rr)&yes
                     sfam=category_family(rr); family_counts[sfam]=family_counts.get(sfam,0)+1
                     sec=obj(rr,oo,day_req)
+                    if oo.get("segment_live_route"):sec["segment_live_route"]=oo["segment_live_route"]
                     if is_swim_experience(rr):swim_covered=True
-            # Named coffee/drink only when a verified mapped venue is known open at the right time.
-            preferred_cluster=(sec["cluster_id"] if sec and "cluster_id" in sec else r["cluster_id"])
-            coff=coffee_stop(c,day_req,hotel,d,coffee_used,route_cache=route_cache,preferred_cluster=preferred_cluster)
-            same_day_avoid={coff["row"]["restaurant_id"]} if coff else set()
-            din=dinner(c,day_req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day_avoid)
-            if din and "local_food" in yes and float(din["row"]["authentic_score"] or 0)>=8:
-                covered.add("local_food")
-            tl=timeline(hotel,i,pa,sec,din,coff,day_mode,route_cache=route_cache)
+
+            same_day={lun["row"]["restaurant_id"]} if lun else set()
+            preferred_cluster=(sec["cluster_id"] if sec else r["cluster_id"])
+            coff=coffee_stop(c,day_req,hotel,d,coffee_used,route_cache=route_cache,
+                             preferred_cluster=preferred_cluster,avoid_ids=same_day)
+            if coff:same_day.add(coff["row"]["restaurant_id"])
+            din=dinner(c,day_req,hotel,dinner_used,d,route_cache=route_cache,avoid_ids=same_day)
+
+            if lun and "local_food" in yes and float(lun["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
+            if din and "local_food" in yes and float(din["row"]["authentic_score"] or 0)>=8:covered.add("local_food")
+
+            tl=timeline(hotel,i,pa,sec,lun,din,coff,day_mode,route_cache=route_cache)
             weather_info=forecast.get(str(d))
             sunset=sunset_local(r["cluster_id"],d)
             day_title="Romantic discovery"
@@ -666,38 +923,52 @@ def generate(req:TripRequest):
             elif "winery" in tags(r):day_title="Wine & countryside"
             elif any(k in tags(r) for k in ["museums","archaeology","religious"]):day_title="Culture & heritage"
             elif any(k in tags(r) for k in ["golf","horse","cycling","hiking","diving"]):day_title="Active couple day"
+
             days.append({"day":i,"date":str(d),"title":day_title,"weather_mode_used":day_mode,
               "sunset_local":sunset,
               "weather":{"source":"OPEN_METEO_LIVE_FORECAST",**weather_info} if weather_info else {"source":"SEASONAL_OR_USER_FALLBACK","mode":day_mode},
               "activity":pa,"secondary_activity":sec,
+              "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"])} if lun else None,
               "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
               "dinner":{"entity_id":din["row"]["restaurant_id"],"title":din["row"]["name"],**venue_public_meta(din["row"]),"travel_band":din["row"]["travel_band"],
                         "travel_minutes":din["live_route"]["minutes"] if din.get("live_route") else BAND_PLAN.get(din["row"]["travel_band"],60),
                         "travel_source":"GOOGLE_ROUTES" if din.get("live_route") else "PLANNING_BAND"} if din else None,
-              "timeline":tl,"timeline_qa":{"external_activity_count":1+(1 if sec else 0),
-                 "activity_family":fam,"primary_cluster":r["cluster_id"],"status":"PASS"}})
+              "timeline":tl,
+              "timeline_qa":{"external_activity_count":1+(1 if sec else 0),
+                 "activity_family":fam,"primary_cluster":r["cluster_id"],
+                 "secondary_pairing":"SAME_CLUSTER_OR_LIVE_NEARBY" if sec else "NO_VALID_NEARBY_SECONDARY",
+                 "status":"PASS"}})
+
         unmet=sorted(yes-covered)
         if require_swim and not swim_covered and "swimming / sea bathing" not in unmet:unmet.append("swimming / sea bathing")
+
     routing_live=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
+    warnings=[]
+    if hotel_op["status"]=="RECHECK":
+        warnings.append(hotel_op["reason"])
+    if not routing_live:
+        warnings.append("Google Routes is not connected. Nearby pairing uses strict geographic clusters and conservative travel bands.")
+    if not forecast and req.weather_mode=="auto":
+        warnings.append("Live forecast unavailable/outside horizon; seasonal weather fallback was used.")
+
     return {"trip_id":"trp_"+uuid.uuid4().hex[:10],
       "status":"LIVE_READY" if routing_live else "STRICT_FALLBACK_READY",
+      "hotel_operation":hotel_op,
       "experience_profile":{"couple_style":req.couple_style,"budget":req.budget,"special_occasion":req.special_occasion},
       "provider_state":{"routing":"GOOGLE_ROUTES_LIVE" if routing_live else "NOT_CONNECTED",
                         "weather":"OPEN_METEO_LIVE" if forecast else ("USER_SCENARIO" if req.weather_mode!="auto" else "FORECAST_UNAVAILABLE_FALLBACK")},
-      "strict_rules":{"closed_or_unknown_opening":"EXCLUDED",
+      "strict_rules":{"activity_date":"EXACT_DAY_AND_USABLE_HOURS_REQUIRED",
+        "closed_or_unknown_opening":"EXCLUDED",
         "max_drive":"LIVE_HARD_LIMIT" if routing_live else "HARD_CONSERVATIVE_BAND_FILTER",
         "explicit_no_preferences":"EXCLUDED","unverified_activities":"EXCLUDED",
-        "variety":"CATEGORY_FAMILY_PENALTY","geography":"SAME_CLUSTER_SECONDARY_PREFERRED",
-        "sunset":"VIEWPOINTS_SCHEDULED_NEAR_SUNSET_WHEN_FEASIBLE"},
-      "unmet_yes_preferences":unmet,"days":days,
-      "warnings":([] if routing_live else ["Google Routes is not connected. Add GOOGLE_MAPS_API_KEY in Render to activate live hard travel-time filtering."]) +
-                 ([] if forecast or req.weather_mode!="auto" else ["The selected dates are outside the available live forecast window or the weather provider was unavailable; seasonal fallback was used."])}
-
+        "lunch":"NAMED_VERIFIED_OPEN_VENUE_ONLY",
+        "secondary_activity":"SAME_CLUSTER_OR_LIVE_NEARBY_AND_TIME_FIT"},
+      "unmet_yes_preferences":unmet,"days":days,"warnings":warnings}
 
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v55 Curated Dining & View Network</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v56 Date & Operations First</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
@@ -712,7 +983,7 @@ body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{backgrou
 const P={sea:"Sea activities",swimming:"Swimming / sea bathing",beach:"Beaches",boat:"Boat / cruises",diving:"Diving / snorkelling",golf:"Golf",horse:"Horse riding",cycling:"Cycling",hiking:"Hiking / walking",viewpoints:"Viewpoints / photography",winery:"Winery / wine tasting",local_food:"Local gastronomy / products",crafts:"Χειροτεχνίες / βιωματικά εργαστήρια",cooking:"Cooking workshops",museums:"Museums / indoor culture",archaeology:"Archaeology / heritage",villages:"Traditional villages",religious:"Churches / monasteries",wellness:"Spa / wellness"};
 const $=x=>document.getElementById(x);
 async function init(){let h=await (await fetch('/api/v1/meta/hotels')).json();$('hotel').innerHTML=h.map(x=>`<option value="${x.hotel_id}">${x.name} — ${x.area||''}</option>`).join('');$('prefs').innerHTML=Object.entries(P).map(([k,v])=>`<span>${v}</span><select id="p_${k}"><option value="any">No preference</option><option value="yes">Yes</option><option value="no">No</option></select>`).join('');let d=new Date();d.setDate(d.getDate()+14);$('date').value=d.toISOString().slice(0,10)}
-async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Weather: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`).join('')+'<div class=warn>'+d.warnings.join('<br>')+'</div>'}
+async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div><div class="'+(d.hotel_operation.status==='VERIFIED_OPEN'?'ok':'warn')+'">Hotel date check: '+d.hotel_operation.status+' · '+d.hotel_operation.reason+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>x.activity?`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Weather: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η κοντινή δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.lunch?`<div class=ok><b>Lunch:</b> ${x.lunch.title}</div>`:'<div class=warn>Δεν βρέθηκε επαληθευμένο συγκεκριμένο lunch venue.</div>'}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`:`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><div class=warn>${x.operational_warning}</div></div>`).join('')+(d.warnings.length?'<div class=warn>'+d.warnings.join('<br>')+'</div>':'')}
 init();</script></body></html>"""
 
 @app.get("/",response_class=HTMLResponse)
