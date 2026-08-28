@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 ROOT=Path(__file__).resolve().parent
 DB=ROOT/"planner.sqlite3"
-app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v60")
+app=FastAPI(title="Cyprus Romantic Trip Planner – Strict Realistic",version="v62")
 
 def conn():
     c=sqlite3.connect(DB); c.row_factory=sqlite3.Row; return c
@@ -932,7 +932,7 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v60-dinner-diversity",
+    return {"service":"ok","logic_version":"v62-dinner-diversity",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -1093,7 +1093,7 @@ def generate(req:TripRequest):
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v60 Hotel-Aware + Dinner Diversity</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v62 Hotel-Aware + Dinner Diversity</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
