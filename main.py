@@ -391,7 +391,7 @@ def strict_drive_ok(r,max_drive,live_enabled=False):
         return lo <= max_drive
     return BAND_MAX.get(r["travel_band"],999) <= max_drive
 
-def fit(r,d,mode,desired):
+def fit(r,d,mode,desired,allow_backshift=True):
     opened,reason=day_open(r,d)
     if not opened:return None
     if not month_ok(r,d,mode):return None
@@ -401,6 +401,7 @@ def fit(r,d,mode,desired):
     start=max(desired,o)
     end=addm(start,dur)
     if end>c:
+        if not allow_backshift:return None
         ch,cm=map(int,c.split(":")); latest=ch*60+cm-dur
         oh,om=map(int,o.split(":"))
         if latest<oh*60+om:return None
@@ -416,7 +417,7 @@ def score(r,hotel_cluster,prefs):
     if r["cluster_id"]==hotel_cluster:s+=8
     return s
 
-def candidates(c,req,hotel,d,desired,used,route_cache=None):
+def candidates(c,req,hotel,d,desired,used,route_cache=None,allow_backshift=True):
     mode=req.weather_mode
     route_cache=route_cache if route_cache is not None else {}
     live_enabled=bool(os.getenv("GOOGLE_MAPS_API_KEY","").strip())
@@ -430,7 +431,7 @@ def candidates(c,req,hotel,d,desired,used,route_cache=None):
         if not strict_drive_ok(r,req.max_drive_min,live_enabled):continue
         if not hard_pref_ok(r,req.prefs):continue
         if not budget_ok_activity(r,req):continue
-        op=fit(r,d,mode,desired)
+        op=fit(r,d,mode,desired,allow_backshift=allow_backshift)
         if not op:continue
         pre.append((score(r,hotel["cluster_id"],req.prefs),r,op))
     pre.sort(key=lambda x:x[0],reverse=True)
@@ -464,8 +465,11 @@ def weather_priority(r,req,d):
         if is_swim_experience(r): bonus += 35
         if is_indoor(r): bonus += 28
     elif mode=="winter":
-        if is_indoor(r): bonus += 22
-        if any(k in tags(r) for k in ["museums","crafts","winery","local_food","wellness"]): bonus += 18
+        if is_indoor(r): bonus += 28
+        if any(k in tags(r) for k in ["museums","crafts","winery","local_food","wellness","villages"]): bonus += 22
+        explicit_sea=any((req.prefs.get(k,"any") or "any").lower()=="yes" for k in ["sea","swimming","beach","boat","diving"])
+        if not explicit_sea and any(k in tags(r) for k in ["swimming","beach","sea","boat","diving"]):
+            bonus -= 45
     else:
         # warm-season normal weather: make sea/swim materially visible
         if d.month in [5,6,7,8,9,10] and is_swim_experience(r): bonus += 20
@@ -478,7 +482,7 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
         desired="16:00" if day==1 else "10:30"
     else:
         desired="16:30" if day==1 else "10:30"
-    cs=candidates(c,req,hotel,d,desired,used,route_cache)
+    cs=candidates(c,req,hotel,d,desired,used,route_cache,allow_backshift=(day!=1))
     yes={k for k,v in req.prefs.items() if (v or "").lower()=="yes"}
     covered_yes=covered_yes or set()
     uncovered=yes-covered_yes
@@ -493,6 +497,11 @@ def pick_primary(c,req,hotel,d,day,used,covered_yes=None,force_swim=False,avoid_
         if force_swim and is_swim_experience(r): sc+=1000
         rescored.append((sc,r,op))
     rescored.sort(key=lambda x:x[0],reverse=True)
+    # If an uncovered YES preference has a valid candidate on this exact date,
+    # primary selection must come from those preferred candidates.
+    preferred_now=[x for x in rescored if tags(x[1]) & uncovered]
+    if preferred_now:
+        rescored=preferred_now
     if force_swim:
         swim=[x for x in rescored if is_swim_experience(x[1])]
         if swim:return swim[0]
@@ -533,6 +542,9 @@ def pick_secondary(c,req,hotel,d,primary,used,covered_yes=None,route_cache=None,
         if seg:op["segment_live_route"]=seg
         rescored.append((sc,r,op))
     rescored.sort(key=lambda x:x[0],reverse=True)
+    preferred_nearby=[x for x in rescored if tags(x[1]) & uncovered]
+    if preferred_nearby:
+        rescored=preferred_nearby
     sunset=sunset_local(primary["row"]["cluster_id"],d)
     sunset_start=addm(sunset,-40)
     for sc,r,op in rescored:
@@ -811,7 +823,7 @@ def timeline(hotel,day,a,b,lunch,din,coffee,weather_mode,route_cache=None):
 
 @app.get("/api/v1/health")
 def health():
-    return {"service":"ok","logic_version":"v56-date-operations-first",
+    return {"service":"ok","logic_version":"v58-constraint-planner",
             "routing_provider":"GOOGLE_ROUTES" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "NOT_CONNECTED",
             "weather_provider":"OPEN_METEO_AUTO",
             "drive_filter":"LIVE_HARD_LIMIT" if os.getenv("GOOGLE_MAPS_API_KEY","").strip() else "STRICT_CONSERVATIVE_MAPPING_BANDS",
@@ -926,7 +938,7 @@ def generate(req:TripRequest):
 
             days.append({"day":i,"date":str(d),"title":day_title,"weather_mode_used":day_mode,
               "sunset_local":sunset,
-              "weather":{"source":"OPEN_METEO_LIVE_FORECAST",**weather_info} if weather_info else {"source":"SEASONAL_OR_USER_FALLBACK","mode":day_mode},
+              "weather":{"source":"OPEN_METEO_LIVE_FORECAST",**weather_info} if weather_info else {"source":"SEASONAL_PLANNING_NOT_LIVE_FORECAST","mode":day_mode,"confidence":"seasonal"},
               "activity":pa,"secondary_activity":sec,
               "lunch":{"entity_id":lun["row"]["restaurant_id"],"title":lun["row"]["name"],**venue_public_meta(lun["row"])} if lun else None,
               "coffee":{"entity_id":coff["row"]["restaurant_id"],"title":coff["row"]["name"],**venue_public_meta(coff["row"])} if coff else None,
@@ -949,15 +961,15 @@ def generate(req:TripRequest):
     if not routing_live:
         warnings.append("Google Routes is not connected. Nearby pairing uses strict geographic clusters and conservative travel bands.")
     if not forecast and req.weather_mode=="auto":
-        warnings.append("Live forecast unavailable/outside horizon; seasonal weather fallback was used.")
+        warnings.append("The trip dates are outside the live forecast window; this is seasonal planning, not an actual weather forecast. The itinerary should refresh automatically when the dates enter the live forecast window.")
 
     return {"trip_id":"trp_"+uuid.uuid4().hex[:10],
       "status":"LIVE_READY" if routing_live else "STRICT_FALLBACK_READY",
       "hotel_operation":hotel_op,
       "experience_profile":{"couple_style":req.couple_style,"budget":req.budget,"special_occasion":req.special_occasion},
       "provider_state":{"routing":"GOOGLE_ROUTES_LIVE" if routing_live else "NOT_CONNECTED",
-                        "weather":"OPEN_METEO_LIVE" if forecast else ("USER_SCENARIO" if req.weather_mode!="auto" else "FORECAST_UNAVAILABLE_FALLBACK")},
-      "strict_rules":{"activity_date":"EXACT_DAY_AND_USABLE_HOURS_REQUIRED",
+                        "weather":"OPEN_METEO_LIVE" if forecast else ("USER_SCENARIO" if req.weather_mode!="auto" else "SEASONAL_PLANNING_NOT_FORECAST")},
+      "strict_rules":{"activity_date":"EXACT_DAY_AND_USABLE_HOURS_REQUIRED","day1_sequence":"ARRIVAL_LUNCH_REST_THEN_ACTIVITY_NO_OVERLAP","yes_preferences":"MUST_COVER_WHEN_FEASIBLE",
         "closed_or_unknown_opening":"EXCLUDED",
         "max_drive":"LIVE_HARD_LIMIT" if routing_live else "HARD_CONSERVATIVE_BAND_FILTER",
         "explicit_no_preferences":"EXCLUDED","unverified_activities":"EXCLUDED",
@@ -968,7 +980,7 @@ def generate(req:TripRequest):
 HTML=r"""<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cyprus Romantic Trip Planner</title><style>
 body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{background:#294c55;color:white;padding:20px}main{max-width:1100px;margin:auto;padding:14px;display:grid;grid-template-columns:390px 1fr;gap:14px}.card{background:white;border:1px solid #ddd;border-radius:14px;padding:15px}label{font-weight:bold;font-size:13px;display:block;margin-top:9px}select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px}button{width:100%;padding:13px;margin-top:15px;background:#345d67;color:white;border:0;border-radius:8px;font-size:16px;font-weight:bold}.prefs{display:grid;grid-template-columns:1fr 120px;gap:6px;align-items:center}.prefs span{font-size:13px}.prefs select{padding:7px}.day{border:1px solid #ddd;border-radius:10px;padding:11px;margin:10px 0}.row{border-bottom:1px solid #eee;padding:5px 0;font-size:13px}.warn{background:#fff3d8;padding:9px;border-radius:8px;font-size:13px;margin:8px 0}.ok{background:#eaf5ee;padding:8px;border-radius:8px;font-size:13px}@media(max-width:760px){main{grid-template-columns:1fr}}
-</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v56 Date & Operations First</div></header><main>
+</style></head><body><header><h1>Cyprus Romantic Trip Planner – Paphos</h1><div>v58 Constraint Planner</div></header><main>
 <div class="card"><h2>Trip inputs</h2><label>Ξενοδοχείο</label><select id="hotel"></select><label>Ημερομηνία</label><input id="date" type="date">
 <label>Διανυκτερεύσεις</label><input id="nights" type="number" value="3" min="1" max="7"><label>Pace</label><select id="pace"><option>relaxed</option><option selected>balanced</option><option>active</option></select>
 <label>Καιρός</label><select id="weather"><option value="auto" selected>Auto live forecast</option><option>normal</option><option>rainy</option><option>heatwave</option><option>winter</option></select>
@@ -983,7 +995,7 @@ body{font-family:Arial;margin:0;background:#f6f3ee;color:#203036}header{backgrou
 const P={sea:"Sea activities",swimming:"Swimming / sea bathing",beach:"Beaches",boat:"Boat / cruises",diving:"Diving / snorkelling",golf:"Golf",horse:"Horse riding",cycling:"Cycling",hiking:"Hiking / walking",viewpoints:"Viewpoints / photography",winery:"Winery / wine tasting",local_food:"Local gastronomy / products",crafts:"Χειροτεχνίες / βιωματικά εργαστήρια",cooking:"Cooking workshops",museums:"Museums / indoor culture",archaeology:"Archaeology / heritage",villages:"Traditional villages",religious:"Churches / monasteries",wellness:"Spa / wellness"};
 const $=x=>document.getElementById(x);
 async function init(){let h=await (await fetch('/api/v1/meta/hotels')).json();$('hotel').innerHTML=h.map(x=>`<option value="${x.hotel_id}">${x.name} — ${x.area||''}</option>`).join('');$('prefs').innerHTML=Object.entries(P).map(([k,v])=>`<span>${v}</span><select id="p_${k}"><option value="any">No preference</option><option value="yes">Yes</option><option value="no">No</option></select>`).join('');let d=new Date();d.setDate(d.getDate()+14);$('date').value=d.toISOString().slice(0,10)}
-async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div><div class="'+(d.hotel_operation.status==='VERIFIED_OPEN'?'ok':'warn')+'">Hotel date check: '+d.hotel_operation.status+' · '+d.hotel_operation.reason+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>x.activity?`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Weather: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η κοντινή δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.lunch?`<div class=ok><b>Lunch:</b> ${x.lunch.title}</div>`:'<div class=warn>Δεν βρέθηκε επαληθευμένο συγκεκριμένο lunch venue.</div>'}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`:`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><div class=warn>${x.operational_warning}</div></div>`).join('')+(d.warnings.length?'<div class=warn>'+d.warnings.join('<br>')+'</div>':'')}
+async function go(){let prefs={};Object.keys(P).forEach(k=>prefs[k]=$('p_'+k).value);let p={hotel_id:$('hotel').value,start_date:$('date').value,nights:+$('nights').value,pace:$('pace').value,weather_mode:$('weather').value,max_drive_min:+$('drive').value,couple_style:$('style').value,budget:$('budget').value,special_occasion:$('occasion').value,prefs};$('out').innerHTML='<p>Checking strict rules…</p>';let r=await fetch('/api/v1/trips/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});let d=await r.json();if(!r.ok){$('out').innerHTML='<div class=warn>'+JSON.stringify(d)+'</div>';return}$('out').innerHTML='<h2>Strict itinerary</h2><div class=ok>Status: '+d.status+' · Routing: '+d.provider_state.routing+' · Weather: '+d.provider_state.weather+'</div><div class="'+(d.hotel_operation.status==='VERIFIED_OPEN'?'ok':'warn')+'">Hotel date check: '+d.hotel_operation.status+' · '+d.hotel_operation.reason+'</div>'+(d.unmet_yes_preferences.length?'<div class=warn>Δεν βρέθηκε κατάλληλη ανοικτή επιλογή για: '+d.unmet_yes_preferences.join(', ')+'</div>':'')+d.days.map(x=>x.activity?`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><h3>${x.title}</h3><div style="font-size:12px">Weather planning: ${x.weather_mode_used} · Sunset: ${x.sunset_local} · ${x.weather.source==='SEASONAL_PLANNING_NOT_LIVE_FORECAST'?'Seasonal estimate — not live forecast':x.weather.source}</div><h4>${x.activity.title}</h4><div style="font-size:12px">Open check: ${x.activity.opening_check} · ${x.activity.travel_band}${x.activity.booking_required?' · Booking required':''}</div>${x.secondary_activity?`<div class=ok><b>2η κοντινή δραστηριότητα:</b> ${x.secondary_activity.title}</div>`:''}${x.lunch?`<div class=ok><b>Lunch:</b> ${x.lunch.title}</div>`:'<div class=warn>Δεν βρέθηκε επαληθευμένο συγκεκριμένο lunch venue.</div>'}${x.timeline.map(t=>`<div class=row>${t.time} · <b>${t.kind}</b> · ${t.title}</div>`).join('')}</div>`:`<div class=day><b>Ημέρα ${x.day} — ${x.date}</b><div class=warn>${x.operational_warning}</div></div>`).join('')+(d.warnings.length?'<div class=warn>'+d.warnings.join('<br>')+'</div>':'')}
 init();</script></body></html>"""
 
 @app.get("/",response_class=HTMLResponse)
